@@ -1,0 +1,3 @@
+desc=Opkg lightweight package management system
+section=-Yocto Tools
+hide=0
