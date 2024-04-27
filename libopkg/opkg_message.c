@@ -58,7 +58,7 @@ void opkg_message(message_level_t level, const char *fmt, ...)
         if (ret >= MSG_LEN) {
             fprintf(stderr, "%s: Message truncated.\n", __FUNCTION__);
         }
-        fprintf(stderr, " * %s", msg);
+        fprintf(stderr, "%s", msg);
     } else {
         int ret;
         ret = vprintf(fmt, ap);

@@ -42,6 +42,8 @@ void opkg_message(message_level_t level, const char *fmt, ...)
     do { \
         if (l == NOTICE) \
             opkg_message(l, fmt, ##args); \
+        else if (l == ERROR) \
+            opkg_message(l, "error: %s: "fmt, __FUNCTION__, ##args); \
         else \
             opkg_message(l, "%s: "fmt, __FUNCTION__, ##args); \
     } while (0)
