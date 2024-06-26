@@ -5,6 +5,27 @@ This changelog for the opkg project attempts to conform to the [KeepAChangelog](
 For a historic list of changes from when the project was called "Ipkg", see the [`:docs/CHANGELOG.ipkg`](./docs/CHANGELOG.ipkg) file.
 
 
+## opkg-0.7.0
+
+This release adds new CLI options and internally refactors how options are parsed; but those implementations should be backwards-compatible. The motivation for bumping the minor version comes from changes to error message lines, which may break some existing deployments, if they parse for opkg errors.
+
+Note that the internal satisfaction solver is being deprecated in the next release. If you are using it, you are recommended to either switch to libsolv or offer on the opkg mailing list to fixup and maintain its implementation.
+
+### Added
+- [Added](https://git.yoctoproject.org/opkg/commit/?id=889f57dd6111cc6adfa7d751a8b9c7376c024ca3) a `--[no-]install-recommends` CLI option, which allows users to override the same setting from the opkg conf files.
+
+### Changed
+- [Changed](https://git.yoctoproject.org/opkg/commit/?id=13ae7eace729c322c934888dc691a46f5549d633) opkg error message lines so that they are always prefixed with "error: ", for easier grepping.
+- [Refactored](https://git.yoctoproject.org/opkg/commit/?id=b0a3d2833efce955aa9120aa9e1c64513adbae84) the order in which CLI and conf file options are parsed, so that CLI options now always take precedence.
+- [Switched](https://git.yoctoproject.org/opkg/commit/?id=74fc3a991f974095644897d18d43846b5f359dae) the internal provider library for `basename()` to a POSIX-compliant variant, for portability and compatibility with new musl releases.
+
+### Fixed
+- [Fixed](https://git.yoctoproject.org/opkg/commit/?id=c35d97140a77ace06727c74d32fc1a53237af886) a couple memory leaks in the opkg config file code.
+
+### Removed
+- [Marked](https://git.yoctoproject.org/opkg/commit/?id=2085308b7d9ca644cb91ac503aadd3f855992945) the internal satisfaction solver for deprecation in a future release. 'libsolv' is the preferred solver implementation, and will become the only option in the next release.
+
+
 ## opkg-0.6.3
 
 ## Added
@@ -12,7 +33,6 @@ For a historic list of changes from when the project was called "Ipkg", see the 
 
 ## Fixed
 - [Fixed](https://git.yoctoproject.org/opkg/commit/?id=9e62a38a4a52974007e9ea174504c42069da1a02) a bug where some library locales might mismatch the user environment. Opkg will now consistently honor the environment's locale.
-
 
 
 ## opkg-0.6.2
