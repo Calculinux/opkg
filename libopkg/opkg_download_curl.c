@@ -414,6 +414,12 @@ static CURL *opkg_curl_init(curl_progress_func cb, void *data)
             setopt(CURLOPT_ERRORBUFFER, curl_errorbuffer);
         }
 
+        // On high verbosity levels enable verbose libcurl output as well. It
+        // will get printed to stderr.
+        if (opkg_config->verbosity >= DEBUG) {
+            setopt(CURLOPT_VERBOSE, 1);
+        }
+
 #ifdef HAVE_SSLCURL
 
         int r;
