@@ -37,10 +37,11 @@
 
 
 /*
- * Make curl an instance variable so we don't have to instanciate it
- * each time
+ * Make curl and the error buffer instance variables so we don't have to
+ * instantiate them each time.
  */
 static CURL *curl = NULL;
+static char *curl_errorbuffer = NULL;
 static CURL *opkg_curl_init(curl_progress_func cb, void *data);
 
 static size_t dummy_write(char *ptr, size_t size, size_t nmemb, void *userdata)
@@ -74,6 +75,51 @@ static size_t header_write(char *ptr, size_t size, size_t nmemb, void *userdata)
             *out = strndup(start, end - start);
     }
     return size * nmemb;
+}
+
+/**
+ * \brief Log an error message in case a download has failed.
+ *
+ * The error message consists of three parts: The passed @c msg, followed by the
+ * @c src_url and information from libcurl about the failure.
+ *
+ * For the last part, libcurl's ERRORBUFFER (see [0]) is used if it is
+ * non-empty. If it is, curl_easy_strerror() is used instead as a fallback -
+ * which will result in a more generic description of the error (e.g. 'HTTP
+ * response code said error' instead of sth. like 'The requested URL returned
+ * error: 401').
+ *
+ * [0]: https://curl.se/libcurl/c/CURLOPT_ERRORBUFFER.html
+ */
+static void log_curl_download_error(const char *msg, const char *src_url, CURLcode res)
+{
+    const size_t curl_err_len = strlen(curl_errorbuffer);
+    const char *curl_err_msg =
+        (curl_err_len) ? curl_errorbuffer : curl_easy_strerror(res);
+    // According to the example code in the documentation, messages returned by
+    // curl_easy_strerror() will never have a trailing newline, while those in
+    // the error buffer might.
+    const int has_trailing_newline =
+        curl_err_len && curl_err_msg[curl_err_len - 1] == '\n';
+    opkg_msg(ERROR, "%s %s: %s%s",
+             msg,
+             src_url,
+             curl_err_msg,
+             (has_trailing_newline) ? "" : "\n");
+}
+
+/*
+ * \brief Wrapper for curl_easy_perform() that resets the error buffer to an
+ * empty string first.
+ *
+ * According to the documentation, there is no need to initialize the buffer for
+ * libcurl versions 7.60.0 and higher. Since we don't require a specific
+ * version, we simply always reset it to be on the safe side.
+ */
+CURLcode perform_curl_request(CURL *handle)
+{
+    curl_errorbuffer[0] = 0;
+    return curl_easy_perform(handle);
 }
 
 #ifdef HAVE_SSLCURL
@@ -225,12 +271,10 @@ static int opkg_validate_cached_file(const char *src, const char *cache_location
     curl_easy_setopt(curl, CURLOPT_HEADER, 1);
     curl_easy_setopt(curl, CURLOPT_NOBODY, 1);  // remove body
 
-    res = curl_easy_perform(curl);
+    res = perform_curl_request(curl);
     if (res) {
-        long error_code;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &error_code);
-        opkg_msg(ERROR, "Failed to download %s headers: %s.\n", src,
-                 curl_easy_strerror(res));
+        log_curl_download_error("Failed to download headers of",
+                                src, res);
         ret = -1;
         goto cleanup;
     }
@@ -329,13 +373,10 @@ int opkg_download_backend(const char *src, const char *dest,
 
     res = 0;
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
-    res = curl_easy_perform(curl);
+    res = perform_curl_request(curl);
     fclose(file);
     if (res) {
-        long error_code;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &error_code);
-        opkg_msg(ERROR, "Failed to download %s: %s.\n", src,
-                 curl_easy_strerror(res));
+        log_curl_download_error("Failed to download", src, res);
         return -1;
     }
 
@@ -347,6 +388,10 @@ void opkg_download_cleanup(void)
     if (curl != NULL) {
         curl_easy_cleanup(curl);
         curl = NULL;
+    }
+    if (curl_errorbuffer != NULL) {
+        free(curl_errorbuffer);
+        curl_errorbuffer = NULL;
     }
 }
 
@@ -363,6 +408,11 @@ static CURL *opkg_curl_init(curl_progress_func cb, void *data)
 {
     if (curl == NULL) {
         curl = curl_easy_init();
+
+        if (curl_errorbuffer == NULL) {
+            curl_errorbuffer = xmalloc(CURL_ERROR_SIZE);
+            setopt(CURLOPT_ERRORBUFFER, curl_errorbuffer);
+        }
 
 #ifdef HAVE_SSLCURL
 
