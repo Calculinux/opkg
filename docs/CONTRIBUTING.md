@@ -14,7 +14,7 @@ Get **help** using this repository and **discuss** changes on the [opkg mailing 
 
 File **bugs** and **enhancement** requests to the Yocto project's [opkg bugzilla tracker](https://bugzilla.yoctoproject.org/buglist.cgi?quicksearch=Product%3Aopkg)
 
-Send **security** concerns directly to the project **maintainer** by email: Alex Stewart <[alex.stewart@ni.com](mailto:alex.stewart@ni.com)>
+Send **security** concerns directly to the project **maintainer** by email: Alex Stewart <[alex.stewart@emerson.com](mailto:alex.stewart@emerson.com)>
 
 **Historic Maintainers**
 - Alejandro del Castillo <alejandro.delcastillo@ni.com>
