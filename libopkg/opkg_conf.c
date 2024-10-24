@@ -740,7 +740,7 @@ int opkg_conf_read(void)
         opkg_config->offline_root = xstrdup(getenv("OFFLINE_ROOT"));
 
     if (opkg_config->conf_file_count > 0) {
-        opkg_msg(INFO, "Loading %d conf file(s).\n", opkg_config->conf_file_count);
+        opkg_msg(INFO, "Loading %d conf file(s).\n", (int)opkg_config->conf_file_count);
         for (i = 0; i < opkg_config->conf_file_count; i++) {
             struct stat st;
             r = stat(opkg_config->conf_files[i], &st);
