@@ -226,8 +226,13 @@ static void opkg_conf_free(void)
         }
     }
 
-    free(opkg_config->conf_file);
-    opkg_config->conf_file = NULL;
+    if (opkg_config->conf_file_count > 0) {
+        for (i = 0; i < opkg_config->conf_file_count; i++)
+            free(opkg_config->conf_files[i]);
+        free(opkg_config->conf_files);
+        opkg_config->conf_file_count = 0;
+        opkg_config->conf_files = NULL;
+    }
     free(opkg_config->dest_str);
     opkg_config->dest_str = NULL;
     free(opkg_config->fields_filter);
@@ -632,6 +637,9 @@ int opkg_conf_init(void)
     str_list_init(&opkg_config->exclude_list);
     str_list_init(&opkg_config->ignore_recommends_list);
 
+    opkg_config->conf_files = NULL;
+    opkg_config->conf_file_count = 0;
+
     return 0;
 }
 
@@ -731,17 +739,20 @@ int opkg_conf_read(void)
     if (!opkg_config->offline_root)
         opkg_config->offline_root = xstrdup(getenv("OFFLINE_ROOT"));
 
-    if (opkg_config->conf_file) {
-        struct stat st;
-        r = stat(opkg_config->conf_file, &st);
-        if (r == -1) {
-            opkg_perror(ERROR, "Couldn't stat %s", opkg_config->conf_file);
-            goto err;
+    if (opkg_config->conf_file_count > 0) {
+        opkg_msg(INFO, "Loading %d conf file(s).\n", opkg_config->conf_file_count);
+        for (i = 0; i < opkg_config->conf_file_count; i++) {
+            struct stat st;
+            r = stat(opkg_config->conf_files[i], &st);
+            if (r == -1) {
+                opkg_perror(ERROR, "Couldn't stat %s", opkg_config->conf_files[i]);
+                goto err;
+            }
+            r = opkg_conf_parse_file(opkg_config->conf_files[i],
+                    &opkg_config->pkg_src_list, &opkg_config->dist_src_list);
+            if (r != 0)
+                goto err;
         }
-        r = opkg_conf_parse_file(opkg_config->conf_file,
-                &opkg_config->pkg_src_list, &opkg_config->dist_src_list);
-        if (r != 0)
-            goto err;
     } else {
         const char *conf_file_dir = getenv("OPKG_CONF_DIR");
         if (conf_file_dir == NULL)
@@ -765,8 +776,8 @@ int opkg_conf_read(void)
         free(etc_opkg_conf_pattern);
 
         for (i = 0; i < globbuf.gl_pathc; i++) {
-            int mismatch = globbuf.gl_pathv[i] && opkg_config->conf_file
-                    && !strcmp(opkg_config->conf_file, globbuf.gl_pathv[i]);
+            int mismatch = globbuf.gl_pathv[i] && opkg_config->conf_file_count > 0
+                    && !strcmp(opkg_config->conf_files[0], globbuf.gl_pathv[i]);
             if (mismatch)
                 continue;
             r = opkg_conf_parse_file (globbuf.gl_pathv[i],

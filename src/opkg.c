@@ -162,7 +162,8 @@ static int args_parse_stage1(int argc, char *argv[])
 
         switch (c) {
         case 'f':
-            opkg_config->conf_file = xstrdup(optarg);
+            opkg_config->conf_files = realloc(opkg_config->conf_files, ++opkg_config->conf_file_count * sizeof(char*));
+            opkg_config->conf_files[opkg_config->conf_file_count - 1] = xstrdup(optarg);
             break;
         case 'o':
             opkg_config->offline_root = xstrdup(optarg);
@@ -396,7 +397,7 @@ static void usage()
     printf("\t                                  3 debug\n");
     printf("\t                                  4 debug level 2\n");
     printf("\t-f <conf_file>                  Use <conf_file> as the opkg configuration file\n");
-    printf("\t--conf <conf_file>\n");
+    printf("\t--conf <conf_file>              Can be given multiple times\n");
     printf("\t--cache-dir <path>              Specify cache directory.\n");
     printf("\t-t, --tmp-dir <directory>       Specify tmp-dir.\n");
     printf("\t-l, --lists-dir <directory>     Specify lists-dir.\n");

@@ -103,6 +103,7 @@ REGRESSION_TESTS := core/01_install.py \
 		    misc/update_loses_autoinstalled_flag.py \
 		    misc/version_comparisons.py \
 		    security/cve_2020_7982.py \
+		    misc/print_architecture.py \
 # intentional blank line
 
 RUN_TESTS := $(REGRESSION_TESTS:%.py=run-%.py)

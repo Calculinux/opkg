@@ -69,7 +69,8 @@ typedef struct opkg_conf {
     pkg_dest_t *default_dest;
     char *dest_str;
 
-    char *conf_file;
+    char **conf_files;
+    size_t conf_file_count;
 
     char *tmp_dir;
     char *intercepts_dir; /* set to "/dev/null" to disable intercepts */
