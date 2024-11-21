@@ -34,7 +34,8 @@
 
 int is_field(const char *type, const char *line)
 {
-    if (strncmp(line, type, strlen(type)) == 0)
+    int type_len = strlen(type);
+    if (strncmp(line, type, type_len) == 0 && (type[type_len - 1] == ':' || line[type_len] == ':'))
         return 1;
     return 0;
 }
