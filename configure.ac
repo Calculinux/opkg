@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script
-AC_INIT([opkg],[0.7.0+git])
+AC_INIT([opkg],[0.8.0])
 AC_CONFIG_SRCDIR([libopkg/pkg.c])
 
 AC_CONFIG_AUX_DIR([conf])
