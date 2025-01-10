@@ -1,6 +1,6 @@
 # Opkg Changelog
 
-This changelog for the opkg project attempts to conform to the [KeepAChangelog](https://keepachangelog.com/en/1.0.0/) standard.
+This changelog for the opkg project attempts to conform to the [KeepAChangelog](https://keepachangelog.com/en/1.1.0/) standard.
 
 For a historic list of changes from when the project was called "Ipkg", see the [`:docs/CHANGELOG.ipkg`](./docs/CHANGELOG.ipkg) file.
 
@@ -9,11 +9,19 @@ For a historic list of changes from when the project was called "Ipkg", see the 
 
 The minor version bump in this release is due to the changes to cURL error output line format.
 
+
 ### Changed
+
 - [Changed](https://git.yoctoproject.org/opkg/commit/?id=ab03377868256427279b36c4b2a298edae4260b8) the error output for the curl download backend, to now report the HTTP error code for failed requests.
   - e.g. `error: log_curl_download_error: Failed to download headers of https://foo.bar/all/Packages.gz: The requested URL returned error: 401`
 - Enabling debug-verbosity, while using the cURL backend, [will now](https://git.yoctoproject.org/opkg/commit/?id=ce6fede3db931bb0da70d1334cdc4101d0aec702) print cURL's verbose error log to stderr when there is a download failure.
   - The verbose output may contain confidential information about your cURL transactions. So this is your reminder that debug-verbosity should not be enabled in production systems or sensitive security environments.
+- The commandline configuration file option (`-f`) [can now](https://git.yoctoproject.org/opkg/commit/?id=36d08b93d2859992b624a4ba2f412cfa5c766050) be specified multiple times, and each configuration file will be loaded and their settings merged.
+
+
+### Fixed
+
+- [Fixed](https://git.yoctoproject.org/opkg/commit/?id=c87188d7535684fddb8cf80993c147b215602b63) a bug in control field parsing where custom fields whose keys are similar to other fields could be confused by the parser.
 
 
 ## opkg-0.7.0
