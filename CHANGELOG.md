@@ -5,7 +5,10 @@ This changelog for the opkg project attempts to conform to the [KeepAChangelog](
 For a historic list of changes from when the project was called "Ipkg", see the [`:docs/CHANGELOG.ipkg`](./docs/CHANGELOG.ipkg) file.
 
 
-## opkg-0.8.0
+## [Unreleased]
+
+
+## [0.8.0] - 2025-01-10
 
 The minor version bump in this release is due to the changes to cURL error output line format.
 
@@ -24,58 +27,78 @@ The minor version bump in this release is due to the changes to cURL error outpu
 - [Fixed](https://git.yoctoproject.org/opkg/commit/?id=c87188d7535684fddb8cf80993c147b215602b63) a bug in control field parsing where custom fields whose keys are similar to other fields could be confused by the parser.
 
 
-## opkg-0.7.0
+## [0.7.0] - 2024-06-26
 
 This release adds new CLI options and internally refactors how options are parsed; but those implementations should be backwards-compatible. The motivation for bumping the minor version comes from changes to error message lines, which may break some existing deployments, if they parse for opkg errors.
 
 Note that the internal satisfaction solver is being deprecated in the next release. If you are using it, you are recommended to either switch to libsolv or offer on the opkg mailing list to fixup and maintain its implementation.
 
+
 ### Added
+
 - [Added](https://git.yoctoproject.org/opkg/commit/?id=889f57dd6111cc6adfa7d751a8b9c7376c024ca3) a `--[no-]install-recommends` CLI option, which allows users to override the same setting from the opkg conf files.
 
+
 ### Changed
+
 - [Changed](https://git.yoctoproject.org/opkg/commit/?id=13ae7eace729c322c934888dc691a46f5549d633) opkg error message lines so that they are always prefixed with "error: ", for easier grepping.
 - [Refactored](https://git.yoctoproject.org/opkg/commit/?id=b0a3d2833efce955aa9120aa9e1c64513adbae84) the order in which CLI and conf file options are parsed, so that CLI options now always take precedence.
 - [Switched](https://git.yoctoproject.org/opkg/commit/?id=74fc3a991f974095644897d18d43846b5f359dae) the internal provider library for `basename()` to a POSIX-compliant variant, for portability and compatibility with new musl releases.
 
+
 ### Fixed
+
 - [Fixed](https://git.yoctoproject.org/opkg/commit/?id=c35d97140a77ace06727c74d32fc1a53237af886) a couple memory leaks in the opkg config file code.
 
+
 ### Removed
+
 - [Marked](https://git.yoctoproject.org/opkg/commit/?id=2085308b7d9ca644cb91ac503aadd3f855992945) the internal satisfaction solver for deprecation in a future release. 'libsolv' is the preferred solver implementation, and will become the only option in the next release.
 
 
-## opkg-0.6.3
+## [0.6.3] - 2023-12-05
 
-## Added
+
+### Added
+
 - [Added](https://git.yoctoproject.org/opkg/commit/?id=ef743b75745939df210a9e6a70a44d69181ef05a) new configuration options to enable preserving ACLs and XAttrs when extracting IPKs.
 
-## Fixed
+
+### Fixed
+
 - [Fixed](https://git.yoctoproject.org/opkg/commit/?id=9e62a38a4a52974007e9ea174504c42069da1a02) a bug where some library locales might mismatch the user environment. Opkg will now consistently honor the environment's locale.
 
 
-## opkg-0.6.2
+## [0.6.2] - 2023-07-11
+
 
 ### Changed
+
 - [Majorly restructured](https://groups.google.com/g/opkg-devel/c/NUP1Xeii2To) the project's developer documentation to be more correct and current.
 
+
 ### Fixed
+
 - [Fixed](https://git.yoctoproject.org/opkg/commit/?id=cee294e72d257417b5e55ef7a76a0fd15313e46b) a bug in the `opkg-keys` utility script which caused the script to ignore settings in the `/etc/opkg/gpg/gpg.conf` file.
 - [Fixed](https://git.yoctoproject.org/opkg/commit/?id=19e2a38c27cd98df9e5d5d959bba80136b77fa01) a compilation error in `md5.c` when using clang16+ and `-std >= gnu11`.
 
 
-## opkg-0.6.1
+## [0.6.1] - 2022-12-06
+
 
 ### Changed
+
 - Opkg will no longer complain when trying to clean up the temporary directory, if the directory does not exist.
 
+
 ### Fixed
+
 - Fixed a SEGFAULT when parsing package indexes with invalid `Size` or `Installed-Size` fields. These indexes will now produce a comprehensible error.
 - Fixed an inconsistecy in .list generation where files would sometimes be entered with/without a trailing slash. The trailng slash should now always be removed.
 - Fixed [a bug](https://bugzilla.yoctoproject.org/show_bug.cgi?id=10461) in package removal, where empty common directories would be left on disk, even after all owning packages were removed.
 
 
-## opkg-0.6.0
+## [0.6.0]
 
 ### Changed
 - When using package signature verification, the signature file is now only downloaded when (a) it is not present in the local cache or (b) the package file must be downloaded again. This makes signature verification more reliable in cases where the connection to the package feed is unreliable, or stored on a removable device that is not always connected.
@@ -85,7 +108,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - The `opkg search` command now prints a newline character at the end of its output when the search path cannot be found - which looks a little nicer when using opkg interactively.
 
 
-## opkg-0.5.0
+## [0.5.0]
 
 ### Added
 - Added support for zstandard data compression (disabled by default).
@@ -108,13 +131,13 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Fixed a GCC 8 compiler warning about parameter visibility in `opkg_solver_libsolv.c`.
 
 
-## opkg-0.4.5
+## [0.4.5]
 
 - Allow CLEAN_DATE to be derived from SOURCE_DATE_EPOCH (build reproducibility)
 - Announce the deprecation of x509 signature checking through OpenSSL in the next release.
 
 
-## opkg-0.4.4
+## [0.4.4]
 
 - Drop feed path when manually downloading packages (issue 11301)
 - Send error information to stderr/stdout immediately, by disabling buffering (issue 13985)
@@ -132,7 +155,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Do not download packages if --noaction is used with download_first=1
 
 
-## opkg-0.4.3
+## [0.4.3]
 
 - Do not populate install status if package is not installed (issue 13760)
 - Add glob support for --add-ignore-recommends and --add-exclude (issue 13759)
@@ -147,7 +170,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Ignore missing recommends of installed packages (issue 13758)
 
 
-## opkg-0.4.2
+## [0.4.2]
 
 - Follow symlinks during install (issue 13574).
 - Add support for empty payloads. Before, an empty payload would segfault opkg.
@@ -158,7 +181,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Add missing pkg->tags initialization (issue 13380).
 
 
-## opkg-0.4.1
+## [0.4.1]
 
 - Improve support for Debian-based repos (issue 13185).
 - Add target for testsuite installation.
@@ -173,7 +196,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Make --no-install-recommends case libsolv flags consistent with the canonical case.
 
 
-## opkg-0.4.0
+## [0.4.0]
 
 - Remove support for long options with only one leading dash.
 - Use strict matching, instead of globs, when removing maintaner scripts (issue 12905).
@@ -191,7 +214,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Abort installation on first failure.
 
 
-## opkg-0.3.6
+## [0.3.6]
 
 - Optimize access to packagename.list file
 - Add compress_list_files option to optimize disk space (issue 11912)
@@ -209,7 +232,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Make missing packages solvable non-version constrained
 
 
-## opkg-0.3.5
+## [0.3.5]
 
 - Handle conffiles that don't exist gracefully (show notice instead of error)
 - Correctly handle symlink files collisions (issue 11033)
@@ -235,7 +258,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Add dist-upgrade support
 
 
-## opkg-0.3.4
+## [0.3.4]
 
 - Improve GPG signature check by making sure the signature is not only correct, but has an approved level of trust on the trusted database.
 - Add support for xz and bzip2 compressed payloads.
@@ -265,7 +288,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Display libsolv version in --version output, if enabled
 
 
-## opkg-0.3.3
+## [0.3.3]
 
 - Fix build breakage when using configure option --enable-sha256. Regression from 0.3.1
 
@@ -275,7 +298,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Do not remove packages if removal operation is not valid due to installed dependents (issue 9862). Regression from 0.3.1.
 
 
-## opkg-0.3.2
+## [0.3.2]
 
 - Remove configure script --enable-solver. To enable libsolv, add config option --with-libsolv.
 - Add version constrain support for Replaces (issue 8931)
@@ -301,7 +324,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Fix upgrade error when package A replaces provider B, and B is provided by A.
 
 
-## opkg-0.3.1
+## [0.3.1]
 
 - Libsolv backend support. Add --enable-solver=libsolv config option to have opkg use the external solver libsolv. This feature is fully functional, but in experimental stage.
 - Cache filenames are now based on the path md5sum instead of the full path, to fix errors on long filepaths.
@@ -310,27 +333,15 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Fix error when processing empty Package.gz files.
 
 
-## opkg-0.3.0
+## [0.3.0]
 
 - Fix exit status when upgrading multiple packages with inter-dependencies (issue 154).
-
-
-## opkg-0.3.0-rc2
-
 - Ensure `libopkg/xfuncs.h`, `tests/` and `scripts/` are included in the release archive!
-
-
-## opkg-0.3.0-rc1
-
 - Reformat all C code so that it is easier to read (issue 119).
 - Fix a few minor logic bugs.
 - Tidy up `autogen.sh` and ensure it runs correctly with old versions of `aclocal` and non-bash shells.
 - Rearrange test scripts into logical categories.
 - Fix segfault when reinstalling a package with `force_reinstall` set (issue 153).
-
-
-## opkg-0.3.0-rc0
-
 - opkg now depends on libarchive.
 - Rename `opkg-cl` to `opkg`.
 - Add config option `autoremove` equivalent to `--autoremove` command line flag.
@@ -394,7 +405,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Lots of code refactoring and minor improvements.
 
 
-## opkg-0.2.4
+## [0.2.4]
 
 - Improve handling of failed installs. Package status is now set to 'install reinst-required half-installed' and advice on how to rectify the situation is now given.
 - Improve handling of upgrades, and fix detection of orphan packages. Orphan RECOMMENDS will now be removed during an upgrade, as well as orphan DEPENDS, if autoremove is enabled. However, packages which move from DEPENDS to RECOMMENDS will now be kept. (issue 144)
@@ -408,7 +419,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Use 'sh' instead of 'bash' as the interpreter for 'opkg-check-config'.
 
 
-## opkg-0.2.3
+## [0.2.3]
 
 - New, optional syntax for setting lists_dir in config files. This new syntax will be required in v0.3.0 and later, the old syntax is now deprecated. The new syntax is:
   ```
@@ -426,7 +437,7 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - Fix internal memory leaks and suboptimal code.
 
 
-## opkg-0.2.2
+## [0.2.2]
 
 - Fix '--force-reinstall' flag so that it acts as an upgrade rather than removing possibly critical packages before reinstall (issue 71)
 - Symlinks are now correctly removed during package uninstall (issue 91)
@@ -434,25 +445,16 @@ Note that the internal satisfaction solver is being deprecated in the next relea
 - The error message "no valid architecture" is no longer given when the architecture of a package is valid but incompatible with the current system.
 
 
-## opkg-0.2.1
+## [0.2.1]
 
 - Updated AUTHORS, README, CONTRIBUTING, etc
 - Dropped "config.h" from the list of installed headers and removed checks for HAVE_* symbols from all installed headers
 - Made libopkg usable from C++ via `extern "C"` wrapping
 
 
-## opkg-0.2.0
-
-- No changes
-
-
-## opkg-0.2.0-rc2
+## [0.2.0]
 
 - Remove libopkg/config.h from the distribution archive, it's generated by configure and doesn't belong in there
-
-
-## opkg-0.2.0-rc1
-
 - Added basic regression test suite
 - Added man pages for opkg-cl and opkg-key
 - Added the `overlay_root` config option
