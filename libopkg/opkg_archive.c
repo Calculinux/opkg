@@ -576,7 +576,7 @@ static struct archive *open_inner(struct archive *outer)
         goto err_cleanup;
     }
 
-#if HAVE_XZ
+#if WITH_XZ
     r = archive_read_support_filter_xz(inner);
     if (r == ARCHIVE_WARN) {
         /* libarchive returns ARCHIVE_WARN if the filter is provided by
@@ -589,7 +589,7 @@ static struct archive *open_inner(struct archive *outer)
     }
 #endif
 
-#if HAVE_BZIP2
+#if WITH_BZIP2
     r = archive_read_support_filter_bzip2(inner);
     if (r == ARCHIVE_WARN) {
         /* libarchive returns ARCHIVE_WARN if the filter is provided by
@@ -602,7 +602,7 @@ static struct archive *open_inner(struct archive *outer)
     }
 #endif
 
-#if HAVE_LZ4
+#if WITH_LZ4
     r = archive_read_support_filter_lz4(inner);
     if (r == ARCHIVE_WARN) {
         /* libarchive returns ARCHIVE_WARN if the filter is provided by
@@ -615,7 +615,7 @@ static struct archive *open_inner(struct archive *outer)
     }
 #endif
 
-#if HAVE_ZSTD
+#if WITH_ZSTD
     r = archive_read_support_filter_zstd(inner);
     if (r == ARCHIVE_WARN) {
         /* libarchive returns ARCHIVE_WARN if the filter is provided by
@@ -837,22 +837,22 @@ struct opkg_ar *ar_open_pkg_control_archive(const char *filename)
     ar = (struct opkg_ar *)xmalloc(sizeof(struct opkg_ar));
 
     ar->ar = extract_outer(filename, "control.tar.gz");
-#if HAVE_XZ
+#if WITH_XZ
     if (!ar->ar) {
         ar->ar = extract_outer(filename, "control.tar.xz");
     }
 #endif
-#if HAVE_BZIP2
+#if WITH_BZIP2
     if (!ar->ar) {
         ar->ar = extract_outer(filename, "control.tar.bz2");
     }
 #endif
-#if HAVE_LZ4
+#if WITH_LZ4
     if (!ar->ar) {
         ar->ar = extract_outer(filename, "control.tar.lz4");
     }
 #endif
-#if HAVE_ZSTD
+#if WITH_ZSTD
     if (!ar->ar) {
         ar->ar = extract_outer(filename, "control.tar.zst");
     }
@@ -879,22 +879,22 @@ struct opkg_ar *ar_open_pkg_data_archive(const char *filename)
     ar = (struct opkg_ar *)xmalloc(sizeof(struct opkg_ar));
 
     ar->ar = extract_outer(filename, "data.tar.gz");
-#if HAVE_XZ
+#if WITH_XZ
     if (!ar->ar) {
         ar->ar = extract_outer(filename, "data.tar.xz");
     }
 #endif
-#if HAVE_BZIP2
+#if WITH_BZIP2
     if (!ar->ar) {
         ar->ar = extract_outer(filename, "data.tar.bz2");
     }
 #endif
-#if HAVE_LZ4
+#if WITH_LZ4
     if (!ar->ar) {
         ar->ar = extract_outer(filename, "data.tar.lz4");
     }
 #endif
-#if HAVE_ZSTD
+#if WITH_ZSTD
     if (!ar->ar) {
         ar->ar = extract_outer(filename, "data.tar.zst");
     }
@@ -914,11 +914,11 @@ struct opkg_ar *ar_open_pkg_data_archive(const char *filename)
     ar->extract_flags = ARCHIVE_EXTRACT_OWNER | ARCHIVE_EXTRACT_PERM |
         ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_UNLINK | ARCHIVE_EXTRACT_NO_OVERWRITE;
 
-#ifdef ENABLE_ACL
+#ifdef USE_ACL
     ar->extract_flags |= ARCHIVE_EXTRACT_ACL;
 #endif
 
-#ifdef ENABLE_XATTR
+#ifdef USE_XATTR
     ar->extract_flags |= ARCHIVE_EXTRACT_FFLAGS | ARCHIVE_EXTRACT_XATTR;
 #endif
 

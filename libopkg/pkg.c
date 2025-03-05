@@ -1589,7 +1589,7 @@ int pkg_verify(pkg_t * pkg)
         goto fail;
     }
 
-#ifdef HAVE_SHA256
+#if WITH_SHA256
     if (pkg->sha256sum) {
         err = opkg_verify_sha256sum(pkg->local_filename, pkg->sha256sum);
         if (err)

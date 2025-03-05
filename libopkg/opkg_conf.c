@@ -90,17 +90,17 @@ static opkg_option_t options[] = {
     {"cache_local_files", OPKG_OPT_TYPE_BOOL, &_conf.cache_local_files},
     {"verbose_status_file", OPKG_OPT_TYPE_BOOL, &_conf.verbose_status_file},
     {"compress_list_files", OPKG_OPT_TYPE_BOOL, &_conf.compress_list_files},
-#if defined(HAVE_GPGME)
+#if WITH_GPGME
     {"gpg_dir", OPKG_OPT_TYPE_STRING, &_conf.gpg_dir},
     {"gpg_trust_level", OPKG_OPT_TYPE_STRING, &_conf.gpg_trust_level},
 #endif
-#if defined(HAVE_CURL)
+#if WITH_CURL
     {"connect_timeout_ms", OPKG_OPT_TYPE_INT, &_conf.connect_timeout_ms},
     {"transfer_timeout_ms", OPKG_OPT_TYPE_INT, &_conf.transfer_timeout_ms},
     {"follow_location", OPKG_OPT_TYPE_BOOL, &_conf.follow_location},
     {"http_auth", OPKG_OPT_TYPE_STRING, &_conf.http_auth},
 #endif
-#if defined(HAVE_SSLCURL) && defined(HAVE_CURL)
+#if WITH_SSLCURL && WITH_CURL
     {"ssl_engine", OPKG_OPT_TYPE_STRING, &_conf.ssl_engine},
     {"ssl_cert", OPKG_OPT_TYPE_STRING, &_conf.ssl_cert},
     {"ssl_cert_type", OPKG_OPT_TYPE_STRING, &_conf.ssl_cert_type},
@@ -805,7 +805,7 @@ int opkg_conf_finalize(void)
 
     /* Option not available on the internal solver since it currently
      * can't merge transactions, resulting in one solve per operation */
-#if defined(HAVE_SOLVER_INTERNAL)
+#if USE_SOLVER_INTERNAL
     opkg_config->download_first = 0;
 #endif
 
@@ -883,7 +883,7 @@ int opkg_conf_finalize(void)
     if (opkg_config->signature_type == NULL)
         opkg_config->signature_type = xstrdup(OPKG_CONF_DEFAULT_SIGNATURE_TYPE);
 
-#if defined(HAVE_GPGME)
+#if WITH_GPGME
     if (opkg_config->gpg_dir == NULL){
         opkg_config->gpg_dir = xstrdup(OPKG_CONF_GPG_DEFAULT_DIR);
     }

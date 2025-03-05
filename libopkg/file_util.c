@@ -38,7 +38,7 @@
 #include "md5.h"
 #include "xfuncs.h"
 
-#if defined HAVE_SHA256
+#if WITH_SHA256
 #include "sha256.h"
 #endif
 
@@ -415,7 +415,7 @@ char *file_md5sum_alloc(const char *file_name)
     return md5_to_string(md5sum_bin);
 }
 
-#ifdef HAVE_SHA256
+#if WITH_SHA256
 char *file_sha256sum_alloc(const char *file_name)
 {
     int err;

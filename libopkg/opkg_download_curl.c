@@ -122,7 +122,7 @@ CURLcode perform_curl_request(CURL *handle)
     return curl_easy_perform(handle);
 }
 
-#ifdef HAVE_SSLCURL
+#if WITH_SSLCURL
 /*
  * Creates a newly allocated string with the same content as str, but
  * the first occurence of "token" is replaced with "replacement".
@@ -171,7 +171,7 @@ static char *replace_token_in_str(const char *str, const char *token,
 
     return replaced_str;
 }
-#endif                          /* HAVE_SSLCURL */
+#endif                          /* WITH_SSLCURL */
 
 /** \brief create_file_stamp: creates stamp for file
  *
@@ -335,7 +335,7 @@ int opkg_download_backend(const char *src, const char *dest,
 
     curl_easy_setopt(curl, CURLOPT_URL, src);
 
-#ifdef HAVE_SSLCURL
+#if WITH_SSLCURL
     if (opkg_config->ftp_explicit_ssl) {
         /*
          * This is what enables explicit FTP SSL mode on curl's side As per
@@ -355,7 +355,7 @@ int opkg_download_backend(const char *src, const char *dest,
         curl_easy_setopt(curl, CURLOPT_URL, fixed_src);
         free(fixed_src);
     }
-#endif                          /* HAVE_SSLCURL */
+#endif                          /* WITH_SSLCURL */
 
     if (use_cache) {
         ret = opkg_validate_cached_file(src, dest);
@@ -420,7 +420,7 @@ static CURL *opkg_curl_init(curl_progress_func cb, void *data)
             setopt(CURLOPT_VERBOSE, 1);
         }
 
-#ifdef HAVE_SSLCURL
+#if WITH_SSLCURL
 
         int r;
 

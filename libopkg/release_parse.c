@@ -35,7 +35,7 @@ static int release_parse_line(void *ptr, const char *line, uint mask)
     unsigned int count = 0;
     char **list = 0;
     static int reading_md5sums = 0;
-#ifdef HAVE_SHA256
+#if WITH_SHA256
     static int reading_sha256sums = 0;
 #endif
 
@@ -73,7 +73,7 @@ static int release_parse_line(void *ptr, const char *line, uint mask)
         }
         break;
 
-#ifdef HAVE_SHA256
+#if WITH_SHA256
     case 'S':
         if (is_field("SHA256", line)) {
             reading_sha256sums = 1;
@@ -92,7 +92,7 @@ static int release_parse_line(void *ptr, const char *line, uint mask)
             cksum_list_append(release->md5sums, list);
             goto dont_reset_flags;
         }
-#ifdef HAVE_SHA256
+#if WITH_SHA256
         else if (reading_sha256sums) {
             list = parse_list(line, &count, ' ', 1);
             cksum_list_append(release->sha256sums, list);
@@ -106,7 +106,7 @@ static int release_parse_line(void *ptr, const char *line, uint mask)
     }
 
     reading_md5sums = 0;
-#ifdef HAVE_SHA256
+#if WITH_SHA256
     reading_sha256sums = 0;
 #endif
 

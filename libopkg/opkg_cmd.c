@@ -458,7 +458,7 @@ static int opkg_distupgrade_cmd(int argc, char **argv)
 {
     int err = 0;
 
-#ifdef HAVE_SOLVER_INTERNAL
+#if USE_SOLVER_INTERNAL
     opkg_msg(ERROR, "dist-upgrade command not available with the internal solver enabled\n");
     err = -1;
 #else

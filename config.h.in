@@ -1,0 +1,18 @@
+#cmakedefine01 WITH_LIBOPKG_API
+#cmakedefine01 WITH_XZ
+#cmakedefine01 WITH_BZIP2
+#cmakedefine01 WITH_LZ4
+#cmakedefine01 WITH_LZSTD
+#cmakedefine01 WITH_CURL
+#cmakedefine01 WITH_SSLCURL
+#cmakedefine01 WITH_ACL
+#cmakedefine01 WITH_XATTR
+#cmakedefine01 USE_SOLVER_LIBSOLV
+#cmakedefine01 USE_SOLVER_INTERNAL
+#cmakedefine01 WITH_GPGME
+
+#cmakedefine DATADIR "@DATADIR@"
+#cmakedefine SYSCONFDIR "@SYSCONFDIR@"
+#cmakedefine VARDIR "@VARDIR@"
+#cmakedefine HOST_CPU_STR "@HOST_CPU_STR@"
+#cmakedefine VERSION "@VERSION@"

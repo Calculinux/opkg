@@ -57,29 +57,49 @@ ldconfig
 
 **Debian 11**
 ```bash
-apt-get update && apt-get install -y autoconf automake git libarchive-dev libcurl4-openssl-dev libgpgme11-dev libssl-dev libtool-bin make pkg-config python3 shtool
+apt-get update && apt-get install -y git libarchive-dev libcurl4-openssl-dev libgpgme11-dev libssl-dev libtool-bin make pkg-config python3
+
+If you want to build statically, you'll also need -dev packages which provide static libraries:
+apt-get install libssh-dev libnghttp2-dev librtmp-dev libpsl-dev libkrb5-dev libldap-dev libacl1-dev liblzma-dev libbrotli-dev
+
 ```
 
-3. Clone the repository from the Yocto project git server. The use autoconf to configure, and gnu make to build the project.
+3. Clone the repository from the Yocto project git server. Then use cmake to configure, and gnu make to build the project.
+`USE_SOLVER_LIBSOLV=1` is the default, however it is shown here to demonstrate how to set build options:
 
 ```bash
 git clone https://git.yoctoproject.org/opkg --branch master
 cd opkg
-autoconf
-./configure --with-libsolv
+mkdir build && cd build
+cmake .. -DUSE_SOLVER_LIBSOLV=1
 make
 ```
 
-For more information about configuring projects with autoconf, please reference the [autoconf documentation](https://www.gnu.org/software/autoconf/manual/autoconf-2.71/html_node/Basic-Installation.html).
+cmake options are set using e.g. -DOPTION=1.
+You can also use cmake-gui which provides a graphical environment for the configuration. Install it with apt-get install cmake-qt-gui and call:
+
+```bash
+mkdir build && cd build
+cmake-gui ..
+```
 
 4. (Optional) Install opkg to your system.
 
 It is not required that you install opkg to test your changes, but you can do so with the following steps.
+The CMAKE_INSTALL_PREFIX may be defined when configuring a build tree to set
+its installation prefix. Or, when using the cmake command-line tool's
+--install mode, one may specify a different prefix using the --prefix option:
 
 ```bash
-./configure --with-libsolv --prefix=/usr/local
-# or some other installation --prefix
+mkdir build && cd build
+cmake .. -DCMAKE_INSTALL_PREFIX="/usr/local/"
+make
+# install to prefix defined by CMAKE_INSTALL_PREFIX:
 make install
+
+# or to some other installation --prefix:
+cmake --install . --prefix /my/install/prefix
+
 # verify:
 opkg --version
 ```

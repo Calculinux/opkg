@@ -11,62 +11,13 @@
 *.*.swp
 *.dirstamp
 
-Makefile
-Makefile.in
-# o_0
-Makefile.in.in
-!tests/regress/Makefile
-
-# The generated m4 subdirectory
-m4/
-!m4/gpgme.m4
-
-# The local aclocal.m4 file
-aclocal.m4
-
-# The output of the configure script
-conf/
-config.guess
-config.log
-config.status
-config.sub
-INSTALL
-
-# Auto-generated config header and timestamp
-config.h
-config.h.in
-configure.lineno
-stamp-h1
-
-# The configure script itself
-configure
-
-
-# Various scripts used for libtool and the like
-install-sh
-libtool
-ltmain.sh
-missing
-depcomp
-
-# opkg stuff
-libopkg.pc
-
-autom4te.cache/
+# cmake build directory
+./build
 
 # Binaries
-*.la
-*.lo
 *.o
 *.so
-.libs/
-.deps/
-src/opkg
 tests/libopkg_test
-
-# Man pages
-man/*.1
-man/*.5
 
 # Python
 *.pyc

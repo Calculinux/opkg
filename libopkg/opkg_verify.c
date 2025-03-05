@@ -27,7 +27,7 @@
 #include "opkg_message.h"
 #include "opkg_verify.h"
 
-#ifdef HAVE_GPGME
+#if WITH_GPGME
 #include "opkg_gpg.h"
 #else
 /* Dummy gpg signature verification. */
@@ -61,7 +61,7 @@ int opkg_verify_md5sum(const char *file, const char *md5sum)
 
 int opkg_verify_sha256sum(const char *file, const char *sha256sum)
 {
-#ifdef HAVE_SHA256
+#if WITH_SHA256
     int r;
     char *file_sha256sum;
 
