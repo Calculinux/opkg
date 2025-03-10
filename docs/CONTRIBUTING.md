@@ -55,13 +55,14 @@ ldconfig
 
 2. Install opkg build requirements.
 
-**Debian 11**
+**Debian 12**
 ```bash
 apt-get update && apt-get install -y git libarchive-dev libcurl4-openssl-dev libgpgme11-dev libssl-dev libtool-bin make pkg-config python3
+```
 
-If you want to build statically, you'll also need -dev packages which provide static libraries:
+If you want to build statically, you'll also need -dev packages which provide static libraries.
+```bash
 apt-get install libssh-dev libnghttp2-dev librtmp-dev libpsl-dev libkrb5-dev libldap-dev libacl1-dev liblzma-dev libbrotli-dev
-
 ```
 
 3. Clone the repository from the Yocto project git server. Then use cmake to configure, and gnu make to build the project.
