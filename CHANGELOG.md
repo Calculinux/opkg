@@ -7,6 +7,11 @@ For a historic list of changes from when the project was called "Ipkg", see the 
 
 ## [Unreleased]
 
+### Changed
+
+- The AutoTools-based build framework has [been replaced](https://git.yoctoproject.org/opkg/commit/?id=3f6040e321634471ec442fb0e80f140f1437e90b) with a more modern, CMake framework.
+  - Refer to the `docs/CONTRIBUTING.md` documentation for updated build instructions.
+
 
 ## [0.8.0] - 2025-01-10
 
