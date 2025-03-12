@@ -4,19 +4,7 @@ else()
     set(LIBRARY_TYPE SHARED)
 endif()
 
-set(OPTIONAL_FILES
-    $<$<BOOL:${WITH_CURL}>:opkg_download_curl.c>
-    $<$<NOT:$<BOOL:${WITH_CURL}>>:opkg_download_wget.c>
-    $<$<BOOL:${WITH_GPGME}>:opkg_gpg.c opkg_gpg.h>
-    $<$<BOOL:${WITH_LIBOPKG_API}>:opkg.c opkg.h>
-    $<$<BOOL:${WITH_SHA256}>:sha256.c sha256.h>
-    $<$<BOOL:${USE_SOLVER_INTERNAL}>:solvers/internal/opkg_action.c solvers/internal/opkg_upgrade_internal.c solvers/internal/opkg_solver_internal.c solvers/internal/opkg_install_internal.c solvers/internal/pkg_depends_internal.c solvers/internal/opkg_upgrade_internal.h solvers/internal/opkg_solver_internal.h solvers/internal/opkg_install_internal.h solvers/internal/pkg_depends_internal.h>
-    $<$<BOOL:${USE_SOLVER_LIBSOLV}>:solvers/libsolv/opkg_solver_libsolv.c>
-)
-
-add_library(libopkg
-    ${LIBRARY_TYPE}
-    ${OPTIONAL_FILES}
+set(HEADER_FILES
     cksum_list.h
     conffile.h
     conffile_list.h
@@ -58,6 +46,44 @@ add_library(libopkg
     xfuncs.h
     xregex.h
     xsystem.h
+)
+
+# we can't use cmake generator expressions to generate the list of
+# header-files, because those are evaluated only at build-system generation
+# time, and can't be used by the install command which installs the headers
+if(WITH_GPGME)
+    list(APPEND HEADER_FILES opkg_gpg.h)
+endif()
+
+if(WITH_LIBOPKG_API)
+    list(APPEND HEADER_FILES opkg.h)
+endif()
+
+if(WITH_SHA256)
+    list(APPEND HEADER_FILES sha256.h)
+endif()
+
+if(USE_SOLVER_INTERNAL)
+    list(APPEND HEADER_FILES
+        solvers/internal/opkg_upgrade_internal.h
+        solvers/internal/opkg_solver_internal.h
+        solvers/internal/opkg_install_internal.h
+        solvers/internal/pkg_depends_internal.h
+    )
+endif()
+
+set(OPTIONAL_SOURCE_FILES
+    $<$<BOOL:${WITH_CURL}>:opkg_download_curl.c>
+    $<$<NOT:$<BOOL:${WITH_CURL}>>:opkg_download_wget.c>
+    $<$<BOOL:${WITH_GPGME}>:opkg_gpg.c>
+    $<$<BOOL:${WITH_LIBOPKG_API}>:opkg.c>
+    $<$<BOOL:${WITH_SHA256}>:sha256.c>
+    $<$<BOOL:${USE_SOLVER_INTERNAL}>:solvers/internal/opkg_action.c solvers/internal/opkg_upgrade_internal.c solvers/internal/opkg_solver_internal.c solvers/internal/opkg_install_internal.c solvers/internal/pkg_depends_internal.c>
+    $<$<BOOL:${USE_SOLVER_LIBSOLV}>:solvers/libsolv/opkg_solver_libsolv.c>
+)
+
+set(SOURCE_FILES
+    ${OPTIONAL_SOURCE_FILES}
     cksum_list.c
     conffile.c
     conffile_list.c
@@ -97,6 +123,12 @@ add_library(libopkg
     xfuncs.c
     xregex.c
     xsystem.c
+)
+
+add_library(libopkg
+    ${LIBRARY_TYPE}
+    ${SOURCE_FILES}
+    ${HEADER_FILES}
 )
 
 # avoid double "lib" prefix
@@ -169,6 +201,11 @@ endif()
 target_include_directories(libopkg PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/..)
 target_include_directories(libopkg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-if (NOT STATIC_LIBOPKG)
+if(NOT STATIC_LIBOPKG)
     install(TARGETS libopkg)
+endif()
+
+if(WITH_LIBOPKG_API)
+    # Only install headers if we're building the API
+    install(FILES ${HEADER_FILES} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopkg)
 endif()
