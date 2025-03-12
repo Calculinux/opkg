@@ -2,10 +2,10 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(opkg
-  VERSION 0.8.0 # https://semver.org/spec/v0.1.0.html
-  DESCRIPTION "Opkg package manager"
-  HOMEPAGE_URL "https://git.yoctoproject.org/opkg/"
-  LANGUAGES C
+    VERSION 0.8.0 # https://semver.org/spec/v0.1.0.html
+    DESCRIPTION "Opkg package manager"
+    HOMEPAGE_URL "https://git.yoctoproject.org/opkg/"
+    LANGUAGES C
 )
 # Hack to support "+git" suffix which cmake doesn't support normally.
 # See https://gitlab.kitware.com/cmake/cmake/-/issues/16716#note_519812
