@@ -131,9 +131,23 @@ git commit -s --trailer Closes=12345
 ----
 ## Submitting Changes Upstream
 
-**Git Send-Email.** Once you have *tested* your change, you can submit it to the opkg mainline by embedding it into an email, and sending it to the opkg mailing list (<opkg@lists.yoctoproject.org>). When you do, please prefix your email with the tags: `[opkg][PATCH]`.
+In order to be able to post to the mailing-list, you first need to subscribe to it at https://lists.yoctoproject.org/g/opkg/join
+If you attempt to send patches to a list you haven’t subscribed to, your email will be returned as undelivered.
 
-The easiest way to do this is using the git send-email extension. You can use the following commands to configure your opkg workspace with the correct defaults.
+**Git Send-Email.** Once you have *tested* your change, you can submit it to the opkg mainline by embedding it into an email, and sending it to the opkg mailing list (<opkg@lists.yoctoproject.org>).
+
+The easiest way to do this is using the git send-email extension (apt install git-email).
+You can use the git send-email command directly, e.g. to send the latest commit of your branch:
+```bash
+git send-email -M -1 --to opkg@lists.yoctoproject.org
+```
+
+For the second version of a patch, you need to modify the subject-prefix:
+```bash
+git send-email -M -1 --to opkg@lists.yoctoproject.org --subject-prefix="opkg][PATCH v2"
+```
+
+You can also use the following commands to configure your opkg workspace with the correct defaults.
 
 ```bash
 git config diff.renames copy
