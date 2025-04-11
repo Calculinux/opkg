@@ -13,8 +13,6 @@ Entries in this section marked with **[1.0]** must be completed before we call O
 
 ### General
 
-* Publish a docker container which can build opkg. This is a nice-to-have for any modern project, since it can get developers onboarded with making and testing contributions quickly. Start by talking to Alex Stewart, who already has a container that he uses for his development.
-
 * Publish a docker container which runs opkg. It is fairly common contemporarily to give users a one-button way to run your application in a sandbox and play around with its abilities. I think this would go a long way towards driving opkg adoption.
 
 
