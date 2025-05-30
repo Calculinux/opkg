@@ -12,7 +12,7 @@
 *.dirstamp
 
 # cmake build directory
-./build
+/build
 
 # bash history for use with docker
 .bash_history
