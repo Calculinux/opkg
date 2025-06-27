@@ -28,8 +28,8 @@ RUN apt-get clean && \
     python3 \
     vim
 
-RUN git clone https://github.com/openSUSE/libsolv.git /usr/local/libsolv && \
-    cd /usr/local/libsolv && \
+RUN git clone https://github.com/openSUSE/libsolv.git /usr/local/src/libsolv && \
+    cd /usr/local/src/libsolv && \
     mkdir build && cd build && \
     cmake \
        -DCMAKE_INSTALL_PREFIX="/usr/local/" \
@@ -39,5 +39,7 @@ RUN git clone https://github.com/openSUSE/libsolv.git /usr/local/libsolv && \
     make install && \
     ldconfig
 
-CMD /bin/bash
-WORKDIR /root
+RUN mkdir /usr/local/src/opkg
+WORKDIR /usr/local/src/opkg
+
+CMD ["/bin/bash"]

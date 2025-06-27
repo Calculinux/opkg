@@ -14,9 +14,6 @@
 # cmake build directory
 /build
 
-# bash history for use with docker
-.bash_history
-
 # Binaries
 *.o
 *.so
