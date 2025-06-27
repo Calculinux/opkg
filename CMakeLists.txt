@@ -67,3 +67,20 @@ add_custom_target(check ${CMAKE_MAKE_PROGRAM} run-tests)
 # Call with cd build && cmake .. && cmake --install . --component=ptest
 install(DIRECTORY tests COMPONENT ptest EXCLUDE_FROM_ALL DESTINATION "$ENV{PTEST_PATH}")
 add_custom_target(install-ptest COMMAND ${CMAKE_COMMAND} --install ${CMAKE_CURRENT_BINARY_DIR} --component=ptest)
+
+
+# Source Distribution Packaging #
+#################################
+
+# This removes the default "-Source" suffix
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${CMAKE_PROJECT_VERSION}")
+
+set(CPACK_PACKAGE_VENDOR "Yocto Project")
+
+set(CPACK_SOURCE_TBZ2 OFF)
+set(CPACK_SOURCE_TXZ OFF)
+set(CPACK_SOURCE_TZ OFF)
+
+# Needs to be ordered after the CPACK variables are set, for some reason.
+include(CPack)
+
