@@ -22,3 +22,6 @@ tests/libopkg_test
 # Python
 *.pyc
 __pycache__
+
+# scripts/make-dist.sh files
+/dist

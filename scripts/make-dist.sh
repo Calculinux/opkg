@@ -5,7 +5,6 @@ set -euo pipefail
 ## CONSTANTS
 SCRIPT_ROOT=$(realpath $(dirname ${BASH_SOURCE}))
 
-BUILD_DIR=dist
 YOCTO_DL_URL=http://downloads.yoctoproject.org/releases/opkg
 
 # Channels which are only printed when verbose
@@ -93,41 +92,50 @@ log DEBUG "Using $opkg_root as the opkg project root"
 
 
 ## MAIN
-
-cleanup_workspace() {
-	log INFO 'Cleaning workspace...'
-	if [ -n "$workspace" ]; then
-		rm -r "$workspace"
-	fi
-}
-
 cd "$opkg_root"
 
-# Create a temp workspace composed of only git-tracked files, to ensure that
-# local workspace files aren't picked up in the dist.
-workspace=$(mktemp -d --tmpdir opkg-dist.tmp.XXXXXX)
-trap cleanup_workspace EXIT
-log INFO "Using workspace $workspace"
-
-log INFO "Checking out commit $dist_commit ..."
-git archive --format=tar $dist_commit | (cd $workspace && tar -xf -)
-
 # Refresh the build/ directory
-test -d ./"$BUILD_DIR" && rm -r ./"$BUILD_DIR"
-mkdir -p ./"$BUILD_DIR"
+distdir="$(realpath ${opkg_root}/dist)"
+rm -rf "${distdir}"
+mkdir -p "${distdir}"
 
 log INFO 'Creating source dist archive...'
 {
-	cd $workspace
-	bash ./autogen.sh
-	bash ./configure
-	make dist
-	cd -
+	stop_container() {
+		local cid=$1
+		if [ -n "$cid" ]; then
+			log INFO "Stopping container $cid ..."
+			docker container kill $cid
+		fi
+	}
+
+	cid=$(docker container run -i --detach \
+		-u $(id -u):$(id -g) \
+		-v "${distdir}":/mnt/dist:rw \
+		opkg-dev \
+	)
+	trap "stop_container $cid" EXIT
+
+	# Copy the source code from the git commit to the container
+	git archive --format=tar $dist_commit | docker container cp - $cid:/usr/local/src/opkg
+	# Give the current user ownership of the opkg source code in the container
+	docker container exec \
+		-u 0:0 \
+		$cid \
+		/bin/bash -c "chown -R $(id -u):$(id -g) /usr/local/src/opkg"
+	# Build the project and source dist in the container and copy into the dist/ directory
+	docker container exec -i $cid /bin/bash <<-EOF
+		mkdir build && cd build
+		cmake .. -DUSE_SOLVER_LIBSOLV=1
+		make -j$(nproc)
+		make package_source
+		cp -v opkg-*.tar.gz /mnt/dist/
+	EOF
 }
-mv -v "$workspace"/opkg-*.tar.gz ./"$BUILD_DIR"
+
 
 # Everything else is done from within the dist/ directory
-cd ./"$BUILD_DIR"
+cd "${distdir}"
 dist_base=$(ls ./opkg-*.tar.gz | sed 's/.*\(opkg-.*\)\.tar\.gz/\1/')
 if [ "$do_manifest" = true ]; then
 	log INFO "Creating dist archive manifest file..."
