@@ -7,6 +7,17 @@ For a historic list of changes from when the project was called "Ipkg", see the 
 
 ## [Unreleased]
 
+
+## [0.9.0] - 2025-06-27
+
+Semiannual opkg release.
+Bumping the minor version as a result of the project build tooling changing from autotools to cmake.
+
+### Added
+
+- Added a Dockerfile container definition (`:docker/`) for a valid developer build environment for opkg.
+  - It's recommended that project contributors use this container to build and test their changes.
+
 ### Changed
 
 - The AutoTools-based build framework has [been replaced](https://git.yoctoproject.org/opkg/commit/?id=3f6040e321634471ec442fb0e80f140f1437e90b) with a more modern, CMake framework.
