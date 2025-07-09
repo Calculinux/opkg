@@ -9,7 +9,7 @@ project(opkg
 )
 # Hack to support "+git" suffix which cmake doesn't support normally.
 # See https://gitlab.kitware.com/cmake/cmake/-/issues/16716#note_519812
-set(PROJECT_VERSION "${PROJECT_VERSION}")
+set(PROJECT_VERSION "${PROJECT_VERSION}+git")
 set(VERSION ${PROJECT_VERSION})
 
 option(STATIC_LIBOPKG "Statically link libopkg into opkg" OFF)
