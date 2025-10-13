@@ -71,8 +71,8 @@ To carry out the steps in this section, you must have:
 
 7. Push the `:dist/` artifacts to the yocto download server using SSH.
 	```bash
-	ssh ${USER}@access.yocto.io "mkdir -p ~/opkg; rm -v ~/opkg/*"
-	rsync ./dist/* ${USER}@access.yocto.io:~/opkg
+	ssh ${USER}@access-vk.yoctoproject.org "mkdir -p ~/opkg; rm -v ~/opkg/*"
+	rsync ./dist/* ${USER}@access-vk.yoctoproject.org:~/opkg
 	```
 	Notify Michael Halstead <mhalstead@linuxfoundation.org> that there is a new opkg release at that path which is ready to be published to the mirror.
 
