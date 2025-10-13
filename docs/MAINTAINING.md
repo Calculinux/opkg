@@ -96,3 +96,23 @@ To carry out the steps in this section, you must have:
 	```
 
 11. Add the released version to the enum of `versions` in the [opkg project config](https://bugzilla.yoctoproject.org/editversions.cgi?product=opkg) on bugzilla.
+
+
+----
+## Managing Maintainers
+
+When adding new project maintainers, an announcement should be made on the Opkg mailing list, and the community given the opportunity to object for at least a month.
+
+Once all objections are resolved, the lead (or outgoing) maintainer should formalize the new maintainer's role by performing the following actions.
+
+1. Declare the new maintainer in the [`:docs/CONTRIBUTING.md`](/docs/CONTRIBUTING.md) file.
+
+2. If the new maintainer is also the recipe maintainer of the OpenEmbedded Core opkg recipe, they should be declared in the OE-core [`:maintainers.inc`](https://git.openembedded.org/openembedded-core/tree/meta/conf/distro/include/maintainers.inc) file.
+
+3. Request an SSH account for the new maintainer on `access-vk.yoctoproject.org` by opening an email ticket to `helpdesk@yoctoproject.org`.
+
+4. Elevate the new maintainer's mailing list permissions on the [Opkg mailing list](https://lists.yoctoproject.org/g/opkg).
+
+5. Upload the new maintainer's PGP key to [Ubuntu's keyserver](https://keyserver.ubuntu.com).
+
+When removing project maintainers, most of the above items should simply be reversed.
