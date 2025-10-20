@@ -2,7 +2,7 @@
 #cmakedefine01 WITH_XZ
 #cmakedefine01 WITH_BZIP2
 #cmakedefine01 WITH_LZ4
-#cmakedefine01 WITH_LZSTD
+#cmakedefine01 WITH_ZSTD
 #cmakedefine01 WITH_CURL
 #cmakedefine01 WITH_SSLCURL
 #cmakedefine01 WITH_ACL
