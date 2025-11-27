@@ -914,11 +914,11 @@ struct opkg_ar *ar_open_pkg_data_archive(const char *filename)
     ar->extract_flags = ARCHIVE_EXTRACT_OWNER | ARCHIVE_EXTRACT_PERM |
         ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_UNLINK | ARCHIVE_EXTRACT_NO_OVERWRITE;
 
-#ifdef USE_ACL
+#if WITH_ACL
     ar->extract_flags |= ARCHIVE_EXTRACT_ACL;
 #endif
 
-#ifdef USE_XATTR
+#if USE_XATTR
     ar->extract_flags |= ARCHIVE_EXTRACT_FFLAGS | ARCHIVE_EXTRACT_XATTR;
 #endif
 

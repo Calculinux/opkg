@@ -6,7 +6,7 @@
 #cmakedefine01 WITH_CURL
 #cmakedefine01 WITH_SSLCURL
 #cmakedefine01 WITH_ACL
-#cmakedefine01 WITH_XATTR
+#cmakedefine01 USE_XATTR
 #cmakedefine01 USE_SOLVER_LIBSOLV
 #cmakedefine01 USE_SOLVER_INTERNAL
 #cmakedefine01 WITH_GPGME

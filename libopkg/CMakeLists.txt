@@ -182,7 +182,7 @@ if(WITH_SSLCURL)
     target_link_libraries(libopkg OpenSSL::Crypto OpenSSL::SSL)
 endif()
 
-if(USE_ACL)
+if(WITH_ACL)
     pkg_check_modules(acl REQUIRED IMPORTED_TARGET libacl)
     target_link_libraries(libopkg PkgConfig::acl)
 endif()

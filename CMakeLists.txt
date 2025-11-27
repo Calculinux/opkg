@@ -13,6 +13,7 @@ set(PROJECT_VERSION "${PROJECT_VERSION}+git")
 set(VERSION ${PROJECT_VERSION})
 
 option(STATIC_LIBOPKG "Statically link libopkg into opkg" OFF)
+# Options which add optional dependencies are prefixed with "WITH_"
 # The current libopkg API is deprecated so only build it if requested
 option(WITH_LIBOPKG_API "Enable deprecated libopkg API" OFF)
 option(WITH_XZ "Enable xz compressor support" ON)
@@ -23,8 +24,9 @@ option(WITH_CURL "Enable downloading with curl" ON)
 include(CMakeDependentOption)
 cmake_dependent_option(WITH_SSLCURL "Enable certificate authentication with curl" ON "WITH_CURL" OFF)
 option(WITH_SHA256 "Enable sha256sum check" OFF)
-option(USE_ACL "Enable ACL support" ON)
-option(USE_XATTR "Enable xattr support" ON)
+option(WITH_ACL "Enable ACL support" OFF)
+# Options which don't add optional dependencies are prefixed with "USE_"
+option(USE_XATTR "Enable xattr support" OFF)
 option(USE_SOLVER_LIBSOLV "Enable libsolv solver support if true. Enable the internal solver if false." ON)
 if(USE_SOLVER_LIBSOLV)
     set(USE_SOLVER_INTERNAL OFF CACHE BOOL "Disable internal solver")
