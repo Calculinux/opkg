@@ -123,7 +123,7 @@ static void pkg_init(pkg_t * pkg)
     pkg->size = 0;
     pkg->installed_size = 0;
     pkg->priority = NULL;
-    pkg->source = NULL;
+    pkg->install_source = PKG_SOURCE_UNKNOWN;
     conffile_list_init(&pkg->conffiles);
     pkg->installed_files = NULL;
     pkg->installed_files_ref_cnt = 0;
@@ -242,9 +242,6 @@ void pkg_deinit(pkg_t * pkg)
     free(pkg->priority);
     pkg->priority = NULL;
 
-    free(pkg->source);
-    pkg->source = NULL;
-
     conffile_list_deinit(&pkg->conffiles);
 
     if (opkg_config->verbose_status_file)
@@ -321,6 +318,15 @@ int pkg_merge(pkg_t * oldpkg, pkg_t * newpkg)
 {
     if (oldpkg == newpkg) {
         return 0;
+    }
+
+    /* Merge source tracking: if both have different sources, mark as BOTH */
+    if (oldpkg->install_source != newpkg->install_source && 
+        oldpkg->install_source != PKG_SOURCE_UNKNOWN && 
+        newpkg->install_source != PKG_SOURCE_UNKNOWN) {
+        oldpkg->install_source = PKG_SOURCE_BOTH;
+    } else if (oldpkg->install_source == PKG_SOURCE_UNKNOWN) {
+        oldpkg->install_source = newpkg->install_source;
     }
 
     if (!oldpkg->auto_installed)
@@ -880,6 +886,27 @@ void pkg_formatted_info(FILE * fp, pkg_t * pkg, const char *fields_filter)
     pkg_formatted_field(fp, pkg, "Replaces", fields_filter);
     pkg_formatted_field(fp, pkg, "Conflicts", fields_filter);
     pkg_formatted_field(fp, pkg, "Status", fields_filter);
+    
+    /* Show package source if requested */
+    if (opkg_config->show_source) {
+        const char *source_str;
+        switch (pkg->install_source) {
+            case PKG_SOURCE_WRITABLE:
+                source_str = "writable";
+                break;
+            case PKG_SOURCE_IMAGE:
+                source_str = "image";
+                break;
+            case PKG_SOURCE_BOTH:
+                source_str = "both";
+                break;
+            default:
+                source_str = "unknown";
+                break;
+        }
+        fprintf(fp, "Package-Source: %s\n", source_str);
+    }
+    
     pkg_formatted_field(fp, pkg, "Section", fields_filter);
     pkg_formatted_field(fp, pkg, "Essential", fields_filter);
     pkg_formatted_field(fp, pkg, "Architecture", fields_filter);

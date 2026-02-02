@@ -79,6 +79,10 @@ typedef struct opkg_conf {
     char *lock_file;
     char *info_dir;
     char *status_file;
+    char *image_status_file;
+    int query_writable_only;
+    int query_image_only;
+    int show_source;
     char *fields_filter; /* specific fields the user requests */
 
     unsigned int pfm;       /* package field mask */

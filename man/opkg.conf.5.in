@@ -249,6 +249,11 @@ CURL's SSL Key Type.
 Location of the status file.
 This file contains all the status of all current/previously installed packages.
 .TP
+\fBimage_status_file\fP
+Optional read-only status file that represents package metadata built into the
+base image. When set, opkg loads this file first and then merges the writable
+\fBstatus_file\fP on top. The file is never modified by opkg.
+.TP
 \fBtmp_dir\fP
 Temp directory for unpacking a package before loading into the filesystem.
 .TP

@@ -638,6 +638,19 @@ static int opkg_list_installed_cmd(int argc, char **argv)
         /* if we have package name or pattern and pkg does not match, then skip it */
         if (pkg_name && fnmatch(pkg_name, pkg->name, 0))
             continue;
+        
+        /* Apply source filtering */
+        if (opkg_config->query_writable_only && 
+            pkg->install_source != PKG_SOURCE_WRITABLE && 
+            pkg->install_source != PKG_SOURCE_BOTH) {
+            continue;
+        }
+        if (opkg_config->query_image_only && 
+            pkg->install_source != PKG_SOURCE_IMAGE && 
+            pkg->install_source != PKG_SOURCE_BOTH) {
+            continue;
+        }
+        
         print_pkg(pkg);
     }
 
@@ -707,6 +720,18 @@ static int opkg_info_status_cmd(int argc, char **argv, int installed_only)
     for (i = 0; i < available->len; i++) {
         pkg = available->pkgs[i];
         if (pkg_name && fnmatch(pkg_name, pkg->name, 0)) {
+            continue;
+        }
+
+        /* Apply source filtering */
+        if (opkg_config->query_writable_only && 
+            pkg->install_source != PKG_SOURCE_WRITABLE && 
+            pkg->install_source != PKG_SOURCE_BOTH) {
+            continue;
+        }
+        if (opkg_config->query_image_only && 
+            pkg->install_source != PKG_SOURCE_IMAGE && 
+            pkg->install_source != PKG_SOURCE_BOTH) {
             continue;
         }
 
@@ -877,6 +902,20 @@ static int opkg_files_cmd(int argc, char **argv)
     pkg = pkg_hash_fetch_installed_by_name(argv[0]);
     if (pkg == NULL) {
         opkg_msg(ERROR, "Package %s not installed.\n", argv[0]);
+        return 0;
+    }
+
+    /* Apply source filtering */
+    if (opkg_config->query_writable_only && 
+        pkg->install_source != PKG_SOURCE_WRITABLE && 
+        pkg->install_source != PKG_SOURCE_BOTH) {
+        opkg_msg(ERROR, "Package %s not in writable status.\n", argv[0]);
+        return 0;
+    }
+    if (opkg_config->query_image_only && 
+        pkg->install_source != PKG_SOURCE_IMAGE && 
+        pkg->install_source != PKG_SOURCE_BOTH) {
+        opkg_msg(ERROR, "Package %s not in image status.\n", argv[0]);
         return 0;
     }
 

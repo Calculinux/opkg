@@ -33,6 +33,7 @@ struct pkg_dest {
     char *root_dir;
     char *info_dir;
     char *status_file_name;
+    char *image_status_file_name;
     FILE *status_fp;
 };
 

@@ -67,6 +67,9 @@ enum {
     ARGS_OPT_HOST_CACHE_DIR,
     ARGS_OPT_SHORT_DESCRIPTION,
     ARGS_OPT_FIELDS_FILTER,
+    ARGS_OPT_WRITABLE_ONLY,
+    ARGS_OPT_IMAGE_ONLY,
+    ARGS_OPT_SHOW_SOURCE,
 };
 
 static struct option long_options[] = {
@@ -126,6 +129,9 @@ static struct option long_options[] = {
     {"volatile-cache", 0, 0, ARGS_OPT_VOLATILE_CACHE},
     {"short-description", 0, 0, ARGS_OPT_SHORT_DESCRIPTION},
     {"fields", 1, 0, ARGS_OPT_FIELDS_FILTER},
+    {"writable-only", 0, 0, ARGS_OPT_WRITABLE_ONLY},
+    {"image-only", 0, 0, ARGS_OPT_IMAGE_ONLY},
+    {"show-source", 0, 0, ARGS_OPT_SHOW_SOURCE},
     {"verbosity", 2, 0, 'V'},
     {"version", 0, 0, 'v'},
     {0, 0, 0, 0}
@@ -333,6 +339,15 @@ static int args_parse_stage2(int argc, char *argv[])
             break;
         case ARGS_OPT_COMBINE:
             opkg_config->combine = 1;
+            break;
+        case ARGS_OPT_WRITABLE_ONLY:
+            opkg_config->query_writable_only = 1;
+            break;
+        case ARGS_OPT_IMAGE_ONLY:
+            opkg_config->query_image_only = 1;
+            break;
+        case ARGS_OPT_SHOW_SOURCE:
+            opkg_config->show_source = 1;
             break;
         default:
             fprintf(stderr, "Encountered unhandled option %d during command line parsing\n", c);

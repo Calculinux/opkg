@@ -53,6 +53,7 @@ static opkg_option_t options[] = {
     {"lock_file", OPKG_OPT_TYPE_STRING, &_conf.lock_file},
     {"info_dir", OPKG_OPT_TYPE_STRING, &_conf.info_dir},
     {"status_file", OPKG_OPT_TYPE_STRING, &_conf.status_file},
+    {"image_status_file", OPKG_OPT_TYPE_STRING, &_conf.image_status_file},
     {"force_maintainer", OPKG_OPT_TYPE_BOOL, &_conf.force_maintainer},
     {"ignore_maintainer", OPKG_OPT_TYPE_BOOL, &_conf.ignore_maintainer},
     {"ignore_uid", OPKG_OPT_TYPE_BOOL, &_conf.ignore_uid},

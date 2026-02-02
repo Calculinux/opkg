@@ -66,6 +66,14 @@ enum pkg_state_flag {
 };
 typedef enum pkg_state_flag pkg_state_flag_t;
 
+enum pkg_source {
+    PKG_SOURCE_UNKNOWN = 0,
+    PKG_SOURCE_WRITABLE = 1,
+    PKG_SOURCE_IMAGE = 2,
+    PKG_SOURCE_BOTH = 3,
+};
+typedef enum pkg_source pkg_source_t;
+
 #define SF_NONVOLATILE_FLAGS (SF_HOLD|SF_NOPRUNE|SF_PREFER|SF_OBSOLETE|SF_USER)
 
 enum pkg_state_status {
@@ -129,6 +137,7 @@ struct pkg {
     pkg_state_want_t state_want;
     pkg_vec_t *wanted_by;
     pkg_state_flag_t state_flag;
+    pkg_source_t install_source;
     pkg_state_status_t state_status;
     char **depends_str;
     unsigned int depends_count;

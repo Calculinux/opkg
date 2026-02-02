@@ -58,6 +58,13 @@ int pkg_dest_init(pkg_dest_t * dest, const char *name, const char *root_dir)
     file_mkdir_hier(status_file_dir, 0755);
     free(status_file_dir);
 
+    if (opkg_config->image_status_file) {
+        sprintf_alloc(&dest->image_status_file_name, "%s%s", dest->root_dir,
+                      opkg_config->image_status_file);
+    } else {
+        dest->image_status_file_name = NULL;
+    }
+
     return 0;
 }
 
@@ -74,4 +81,7 @@ void pkg_dest_deinit(pkg_dest_t * dest)
 
     free(dest->status_file_name);
     dest->status_file_name = NULL;
+
+    free(dest->image_status_file_name);
+    dest->image_status_file_name = NULL;
 }

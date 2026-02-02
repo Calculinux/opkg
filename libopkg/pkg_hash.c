@@ -65,7 +65,7 @@ static void free_pkgs(const char *key, void *entry, void *data)
 }
 
 static int pkg_hash_add_from_file(const char *file_name, pkg_src_t * src,
-                           pkg_dest_t * dest, int is_status_file)
+                           pkg_dest_t * dest, int is_status_file, pkg_source_t source)
 {
     pkg_t *pkg;
     FILE *fp = NULL;
@@ -115,6 +115,7 @@ static int pkg_hash_add_from_file(const char *file_name, pkg_src_t * src,
         pkg = pkg_new();
         pkg->src = src;
         pkg->dest = dest;
+        pkg->install_source = source;
 
         ret = parse_from_stream_nomalloc(pkg_parse_line, pkg, fp, 0, &buf, len);
         if (pkg->name == NULL) {
@@ -179,7 +180,7 @@ static int dist_hash_add_from_file(pkg_src_t * dist)
         sprintf_alloc(&list_file, "%s/%s", opkg_config->lists_dir, subname);
 
         if (file_exists(list_file)) {
-            r = pkg_hash_add_from_file(list_file, dist, NULL, 0);
+            r = pkg_hash_add_from_file(list_file, dist, NULL, 0, PKG_SOURCE_UNKNOWN);
             if (r != 0) {
                 free(list_file);
                 return -1;
@@ -269,7 +270,7 @@ int pkg_hash_load_feeds(void)
                       opkg_config->compress_list_files ? ".gz" : "" );
 
         if (file_exists(list_file)) {
-            r = pkg_hash_add_from_file(list_file, src, NULL, 0);
+            r = pkg_hash_add_from_file(list_file, src, NULL, 0, PKG_SOURCE_UNKNOWN);
             if (r != 0) {
                 free(list_file);
                 return -1;
@@ -296,9 +297,17 @@ int pkg_hash_load_status_files(void)
 
         dest = (pkg_dest_t *) iter->data;
 
+        if (dest->image_status_file_name &&
+                file_exists(dest->image_status_file_name)) {
+            int r = pkg_hash_add_from_file(dest->image_status_file_name, NULL,
+                                           dest, 1, PKG_SOURCE_IMAGE);
+            if (r != 0)
+                return -1;
+        }
+
         if (file_exists(dest->status_file_name)) {
             int r = pkg_hash_add_from_file(dest->status_file_name, NULL, dest,
-                                           1);
+                                           1, PKG_SOURCE_WRITABLE);
             if (r != 0)
                 return -1;
         }
