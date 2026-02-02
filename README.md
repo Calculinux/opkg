@@ -2,9 +2,9 @@
 
 This is a fork of [opkg](https://git.yoctoproject.org/opkg/) with Calculinux-specific enhancements for read-only root filesystems with overlayfs and A/B RAUC updates.
 
-## Branch: calculinux-v0.7.0
+## Branch: calculinux-v0.9.0
 
-Based on upstream opkg v0.7.0 with the following enhancements:
+Based on upstream opkg v0.9.0 with the following enhancements:
 
 ### Image Status File Support
 - New `image_status_file` configuration option in opkg.conf
