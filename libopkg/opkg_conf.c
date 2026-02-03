@@ -562,6 +562,15 @@ int opkg_conf_write_status_files(void)
     list_for_each_entry(iter, &opkg_config->pkg_dest_list.head, node) {
         dest = (pkg_dest_t *) iter->data;
 
+        /* Prevent writing to the read-only base image status file. */
+        if (dest->image_status_file_name &&
+            strcmp(dest->status_file_name, dest->image_status_file_name) == 0) {
+            opkg_msg(ERROR, "Cannot modify read-only image status file %s\n",
+                     dest->status_file_name);
+            ret = -1;
+            continue;
+        }
+
         dest->status_fp = fopen(dest->status_file_name, "w");
         if (dest->status_fp == NULL && errno != EROFS) {
             opkg_perror(ERROR, "Can't open status file %s",
