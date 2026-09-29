@@ -546,6 +546,19 @@ static int skip_pkg_if_duplicate_and_installed(pkg_t *pkg)
     return skip;
 }
 
+/* Packages read only from the image status file are recorded there
+ * already. Writing them to the writable status file as well would copy the
+ * whole image into the overlay on every status write, so do that only once
+ * something changed them (a hold flag, a removal, ...). */
+static int image_pkg_unchanged(pkg_t *pkg)
+{
+    return pkg->install_source == PKG_SOURCE_IMAGE
+        && pkg->state_want == pkg->image_state_want
+        && pkg->state_status == pkg->image_state_status
+        && (pkg->state_flag & SF_NONVOLATILE_FLAGS)
+            == (pkg->image_state_flag & SF_NONVOLATILE_FLAGS);
+}
+
 int opkg_conf_write_status_files(void)
 {
     pkg_dest_list_elt_t *iter;
@@ -598,6 +611,8 @@ int opkg_conf_write_status_files(void)
                      pkg->name);
             continue;
         }
+        if (image_pkg_unchanged(pkg))
+            continue;
         if (pkg->dest->status_fp && !skip_pkg_if_duplicate_and_installed(pkg))
             pkg_print_status(pkg, pkg->dest->status_fp);
     }

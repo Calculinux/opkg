@@ -138,6 +138,11 @@ struct pkg {
     pkg_vec_t *wanted_by;
     pkg_state_flag_t state_flag;
     pkg_source_t install_source;
+    /* State as read from the image status file. An image package is copied
+     * to the writable status file only once it differs from this. */
+    pkg_state_want_t image_state_want;
+    pkg_state_flag_t image_state_flag;
+    pkg_state_status_t image_state_status;
     pkg_state_status_t state_status;
     char **depends_str;
     unsigned int depends_count;
