@@ -155,6 +155,12 @@ static int pkg_hash_add_from_file(const char *file_name, pkg_src_t * src,
             continue;
         }
 
+        if (source == PKG_SOURCE_IMAGE) {
+            pkg->image_state_want = pkg->state_want;
+            pkg->image_state_flag = pkg->state_flag;
+            pkg->image_state_status = pkg->state_status;
+        }
+
         hash_insert_pkg(pkg, is_status_file);
 
     } while (!feof(fp));
