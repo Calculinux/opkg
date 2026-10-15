@@ -8,6 +8,28 @@ For a historic list of changes from when the project was called "Ipkg", see the 
 ## [Unreleased]
 
 
+## [0.9.1] - 2026-10-15
+
+First Calculinux version on the CMake-based tree: the removal journal and
+restore features for read-only image-backed root filesystems.
+
+### Added
+
+- `opkg restore <pkgs>`: discards the overlay copy of package(s) and
+  unshadows the base image's files behind the whiteouts. Requires the
+  Calculinux overlayfs ioctls; without them it fails loudly and keeps the
+  journal entry.
+- Removal journal: removing a package the base image also ships is recorded
+  in the writable status file (`not-installed` entry), so the removal
+  survives image updates instead of the package springing back to
+  "installed (image)" with its files still whiteout-hidden.
+- Install-time restoration: `opkg install` of a journal-recorded image
+  package at the image version restores the image copy instead of
+  downloading and unpacking a redundant copy into the overlay. A bare name
+  restores unless the feed offers a strictly newer version; an explicitly
+  pinned version must exactly equal the image version. Local files, remote
+  URLs and globbed arguments always install normally.
+
 ## [0.9.0] - 2025-06-27
 
 Semiannual opkg release.
