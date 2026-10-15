@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(opkg
-    VERSION 0.9.0 # https://semver.org/spec/v0.1.0.html
+    VERSION 0.9.1 # https://semver.org/spec/v0.1.0.html
     DESCRIPTION "Opkg package manager"
     HOMEPAGE_URL "https://git.yoctoproject.org/opkg/"
     LANGUAGES C
