@@ -751,7 +751,15 @@ pkg_t *pkg_hash_fetch_by_name(const char *pkg_name)
                 || vec->pkgs[i]->state_status == SS_UNPACKED
                 || vec->pkgs[i]->state_status == SS_HALF_INSTALLED)
             return vec->pkgs[i];
-        if (fallback == NULL)
+        /* Among the non-installed records, prefer the one the image status
+         * file sourced: feeds load before the status files, so a feed-only
+         * (PKG_SOURCE_UNKNOWN) entry can precede the journal-merged image
+         * record. Fall back to the first entry only when no image-sourced
+         * record exists. */
+        if (vec->pkgs[i]->install_source == PKG_SOURCE_IMAGE
+                || vec->pkgs[i]->install_source == PKG_SOURCE_BOTH)
+            fallback = vec->pkgs[i];
+        else if (fallback == NULL)
             fallback = vec->pkgs[i];
     }
 

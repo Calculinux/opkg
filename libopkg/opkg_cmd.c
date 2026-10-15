@@ -661,6 +661,12 @@ static int install_collect_ghost(const char *arg, struct restore_entry *entry)
     pkg_t *ghost, *candidate;
     int collected = 0;
 
+    /* Under an offline root the base image restore cannot run (the overlay
+     * ioctls cannot reach the foreign root), so never divert an argument
+     * away from the regular install path. */
+    if (opkg_config->offline_root)
+        return 0;
+
     if (strchr(arg, '/') != NULL || strstr(arg, "://") != NULL
             || is_str_glob(arg))
         return 0;
@@ -681,6 +687,10 @@ static int install_collect_ghost(const char *arg, struct restore_entry *entry)
         if (constraint != EQUAL)
             goto out;
         parse_version(&requested, version);
+        /* parse_version leaves force_reinstall unset, and an equal version
+         * comparison folds it into the result; zero it as opkg_compare_versions_cmd
+         * does, so the pin check does not read stack garbage. */
+        requested.force_reinstall = 0;
         collected = pkg_version_satisfied(&requested, ghost, "=");
         free(requested.version);
         if (!collected)
@@ -747,8 +757,10 @@ static int opkg_install_cmd(int argc, char **argv)
     for (i = 0; i < normal_count; i++) {
         opkg_msg(DEBUG2, "%s\n", normal_argv[i]);
         r = opkg_prepare_url_for_install(normal_argv[i], &normal_argv[i]);
-        if (r != 0)
+        if (r != 0) {
+            err = -1;
             goto cleanup;
+        }
     }
     pkg_info_preinstall_check();
 
@@ -1239,7 +1251,11 @@ static int opkg_restore_cmd(int argc, char **argv)
             err = -1;
             goto free_entries;
         }
-        restore_snapshot_files(&entries[i]);
+        /* The snapshot heals the .list whiteout via overlay ioctls; under
+         * an offline root those would hit whatever hosts the foreign root,
+         * and the restore (the only consumer) is skipped below anyway. */
+        if (!opkg_config->offline_root)
+            restore_snapshot_files(&entries[i]);
     }
 
     for (i = 0; i < argc; i++) {
