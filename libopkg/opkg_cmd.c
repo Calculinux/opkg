@@ -46,6 +46,7 @@
 #include "xsystem.h"
 #include "xfuncs.h"
 #include "opkg_solver.h"
+#include "ovl_restore.h"
 
 static void print_pkg(pkg_t * pkg)
 {
@@ -85,6 +86,7 @@ static void sigint_handler(int sig)
     write_status_files_if_changed();
     exit(128 + sig);
 }
+
 
 static int opkg_update_cmd(int argc, char **argv)
 {
@@ -401,35 +403,397 @@ static int opkg_configure_packages(char *pkg_name)
 
 static int opkg_remove_cmd(int argc, char **argv);
 
+/* Metadata files opkg keeps per package below info_dir. A plain `opkg remove`
+ * deletes them and thereby whiteouts the base image's copies, which hides
+ * the package from opkg although the image still ships it. */
+static const char *restore_metadata_suffixes[] = {
+    ".list", ".control", ".conffiles",
+    ".preinst", ".postinst", ".prerm", ".postrm",
+};
+
+struct restore_entry {
+    char *name;             /* normalized package name */
+    char *arg;              /* the original command line argument */
+    const char *info_dir;   /* package's info directory, for metadata paths */
+    pkg_t *pkg;             /* the package object; stable for the process */
+    pkg_source_t source;    /* where the package came from at entry time */
+    int in_image;           /* the base image ships the package */
+    int had_overlay_copy;   /* an overlay copy had to be removed */
+    str_list_t paths;       /* files recorded in the pre-removal file list */
+};
+
+/* Append the absolute paths recorded in the .list file on disk to @paths. */
+static int read_disk_file_list(const char *list_file, str_list_t *paths)
+{
+    FILE *fp;
+    char line[4096];
+
+    fp = fopen(list_file, "r");
+    if (fp == NULL)
+        return 0;    /* no list readable: metadata repair is enough */
+    while (fgets(line, sizeof(line), fp)) {
+        char *path = line, *p, *tab;
+        int is_abs;
+
+        tab = strchr(path, '\t');
+        if (tab)
+            *tab = '\0';
+        for (p = path + strlen(path); p > path; p--)
+            if (*(p - 1) != '\n' && *(p - 1) != '\r')
+                break;
+        *p = '\0';
+        if (*path == '\0')
+            continue;
+        is_abs = (*path == '/');
+        if (!is_abs) {
+            char *abs;
+            sprintf_alloc(&abs, "/%s", path);
+            str_list_append(paths, abs);
+            continue;
+        }
+        str_list_append(paths, xstrdup(path));
+    }
+    fclose(fp);
+    return 1;
+}
+
+/* Copy the package's recorded file list into @entry. The .list itself is
+ * whiteout-healed first so that the base image's list is readable for a
+ * package that is only in the image (a plain `opkg remove` whiteouts it).
+ * For a removed (journal-only) package the list is read from disk directly:
+ * pkg_get_installed_files() refuses to do so for non-installed packages. */
+static void restore_snapshot_files(struct restore_entry *entry)
+{
+    pkg_t *pkg = entry->pkg;
+    char *list_file = NULL;
+    file_list_t *files;
+    file_list_elt_t *fiter;
+    int healed;
+
+    sprintf_alloc(&list_file, "%s/%s.list", entry->info_dir, entry->name);
+    if (list_file) {
+        const char *lf = list_file;
+
+        ovl_restore_whiteouts(&lf, 1, opkg_config->noaction,
+                              &healed, NULL);
+
+        if (pkg->state_status == SS_INSTALLED
+                || pkg->state_status == SS_UNPACKED
+                || pkg->state_status == SS_HALF_INSTALLED) {
+            files = pkg_get_installed_files(pkg);
+            if (files != NULL) {
+                for (fiter = file_list_first(files); fiter;
+                        fiter = file_list_next(files, fiter)) {
+                    file_info_t *info = (file_info_t *)fiter->data;
+
+                    if (info->path == NULL)
+                        continue;
+                    if (info->path[0] == '/')
+                        str_list_append(&entry->paths, xstrdup(info->path));
+                    else {
+                        char *abs;
+                        sprintf_alloc(&abs, "/%s", info->path);
+                        str_list_append(&entry->paths, abs);
+                    }
+                }
+                /* The list is cached on the package; drop the reference
+                 * taken by pkg_get_installed_files (removal takes its own
+                 * later). */
+                pkg_free_installed_files(pkg);
+            }
+        } else {
+            if (!read_disk_file_list(list_file, &entry->paths)
+                    && opkg_config->noaction)
+                opkg_msg(NOTICE,
+                         "%s: its file list is whiteout-hidden and noaction "
+                         "mode does not unhide it; the file-level plan for "
+                         "this package is omitted\n", entry->name);
+        }
+        free(list_file);
+    }
+}
+
+/*
+ * Remove the whiteouts left by the package's removal over base image files
+ * and metadata, and drop the overlay's record of the package so the image
+ * status file becomes authoritative again.
+ *
+ * The file snapshot must be captured beforehand (see restore_snapshot_files).
+ * Returns 0 on success, -1 when the heal failed; sets *@unsupported when the
+ * running kernel lacks the Calculinux overlayfs ioctls.
+ */
+static int restore_heal_entry(struct restore_entry *entry, int meta_count,
+                              int *unsupported)
+{
+    str_list_elt_t *pit;
+    const char **snap;
+    size_t snap_count = 0, idx = 0;
+    int m;
+    int part_restored = 0, part_unsupported = 0, r = 0;
+
+    for (pit = str_list_first(&entry->paths); pit;
+            pit = str_list_next(&entry->paths, pit))
+        snap_count++;
+    snap = snap_count ? xmalloc(snap_count * sizeof(*snap)) : NULL;
+    for (pit = str_list_first(&entry->paths); pit;
+            pit = str_list_next(&entry->paths, pit))
+        snap[idx++] = (const char *)pit->data;
+    if (snap)
+        r = ovl_restore_whiteouts(snap, snap_count,
+                                  opkg_config->noaction,
+                                  &part_restored, &part_unsupported);
+    free(snap);
+    if (r == 0)
+        for (m = 0; m < meta_count; m++) {
+            char *meta_path;
+            int meta_restored = 0, meta_unsupported = 0;
+
+            sprintf_alloc(&meta_path, "%s/%s%s", entry->info_dir,
+                          entry->name, restore_metadata_suffixes[m]);
+            if (meta_path) {
+                const char *mp = meta_path;
+
+                r = ovl_restore_whiteouts(&mp, 1, opkg_config->noaction,
+                                          &meta_restored, &meta_unsupported);
+                part_restored += meta_restored;
+                part_unsupported |= meta_unsupported;
+                free(meta_path);
+            }
+            if (r != 0)
+                break;
+        }
+
+    if (r != 0) {
+        opkg_msg(ERROR, "Failed to restore the base image files for %s\n",
+                 entry->name);
+        return -1;
+    }
+    if (part_unsupported && !opkg_config->noaction) {
+        /*
+         * The whiteouts could not be lifted, so the base image files stay
+         * hidden: fail, and keep the overlay record (the journal entry
+         * remains, so the package still reports as removed).
+         */
+        *unsupported = 1;
+        opkg_msg(ERROR,
+                 "The base image files for %s could not be restored: the "
+                 "running kernel lacks the Calculinux overlayfs ioctls.\n"
+                 "The package stays removed; restore them once a kernel "
+                 "with the overlayfs module runs.\n",
+                 entry->name);
+        return -1;
+    }
+    if (part_unsupported)
+        *unsupported = 1;
+
+    /*
+     * The overlay no longer contributes anything to this package (the
+     * overlay copy is gone, and a journal entry recorded earlier would
+     * claim the opposite). Drop the overlay record so the base image
+     * status file becomes authoritative again. In noaction mode the
+     * plan is only reported; nothing may be written.
+     */
+    if (entry->source == PKG_SOURCE_BOTH && !opkg_config->noaction) {
+        entry->pkg->suppress_status = 1;
+        opkg_state_changed++;
+    }
+
+    if (entry->in_image) {
+        if (part_restored)
+            opkg_msg(NOTICE, "Restored %d base image file(s) for %s.\n",
+                     part_restored, entry->name);
+        else
+            opkg_msg(NOTICE,
+                     "Nothing was shadowed for %s; the base image copy "
+                     "stands as-is.\n", entry->name);
+    } else if (part_restored)
+        opkg_msg(NOTICE,
+                 "Removed the overlay copy of %s; restored %d shadowed base "
+                 "image file(s).\n", entry->name, part_restored);
+    else
+        opkg_msg(NOTICE,
+                 "Removed the overlay copy of %s (it is not part of the base "
+                 "image).\n", entry->name);
+    return 0;
+}
+
+/*
+ * Shared tail for commands that relied on the Calculinux overlayfs ioctls:
+ * report a kernel without them. Returns -1 to flag partial failure, except
+ * in noaction mode, where the incomplete plan is only a notice.
+ */
+static int restore_report_unsupported(int unsupported)
+{
+    if (!unsupported)
+        return 0;
+
+    if (opkg_config->noaction) {
+        opkg_msg(NOTICE,
+                 "The running kernel lacks the Calculinux overlayfs ioctls; "
+                 "the restore plan could not be completed.\n");
+        return 0;
+    }
+    opkg_msg(ERROR,
+             "The running kernel's overlayfs lacks the Calculinux overlayfs "
+             "module's ioctls.\n"
+             "The overlay copy was removed, but the base image files may stay "
+             "hidden;\n"
+             "a Calculinux kernel with the overlayfs module is required to "
+             "restore them.\n");
+    return -1;
+}
+
+/*
+ * Detect an install argument that would just reinstall a package the base
+ * image already provides, and collect it for restoring instead. Such a
+ * package is a ghost: its removal was journaled in the writable status file
+ * (state removed) while the image status file still ships it.
+ *
+ * The argument qualifies when the requested version is not newer than the
+ * image's: a bare name restores unless the feed offers something newer, and
+ * an explicitly pinned version must be exactly the image version. Local
+ * files, remote URLs and globs always install the regular way.
+ */
+static int install_collect_ghost(const char *arg, struct restore_entry *entry)
+{
+    char *name = NULL, *version = NULL;
+    version_constraint_t constraint = NONE;
+    pkg_t *ghost, *candidate;
+    int collected = 0;
+
+    /* Under an offline root the base image restore cannot run (the overlay
+     * ioctls cannot reach the foreign root), so never divert an argument
+     * away from the regular install path. */
+    if (opkg_config->offline_root)
+        return 0;
+
+    if (strchr(arg, '/') != NULL || strstr(arg, "://") != NULL
+            || is_str_glob(arg))
+        return 0;
+
+    strip_pkg_name_and_version(arg, &name, &version, &constraint);
+
+    ghost = pkg_hash_fetch_by_name(name);
+    if (ghost == NULL
+            || ghost->state_status != SS_NOT_INSTALLED
+            || ghost->install_source != PKG_SOURCE_BOTH)
+        goto out;
+
+    if (version != NULL) {
+        /* Only an equality pin can be satisfied by the image copy; range
+         * constraints may admit a newer feed version and install normally. */
+        struct pkg requested;
+
+        if (constraint != EQUAL)
+            goto out;
+        parse_version(&requested, version);
+        /* parse_version leaves force_reinstall unset, and an equal version
+         * comparison folds it into the result; zero it as opkg_compare_versions_cmd
+         * does, so the pin check does not read stack garbage. */
+        requested.force_reinstall = 0;
+        collected = pkg_version_satisfied(&requested, ghost, "=");
+        free(requested.version);
+        if (!collected)
+            goto out;
+    } else {
+        candidate =
+            pkg_hash_fetch_best_installation_candidate_by_name(name);
+        if (candidate != NULL && candidate != ghost
+                && pkg_compare_versions(candidate, ghost) > 0)
+            goto out;    /* the feed offers a newer version: install it */
+    }
+
+    entry->name = xstrdup(ghost->name);
+    entry->arg = NULL;
+    entry->info_dir = ghost->dest->info_dir;
+    entry->pkg = ghost;
+    entry->source = ghost->install_source;
+    entry->in_image = 1;
+    entry->had_overlay_copy = 0;
+    str_list_init(&entry->paths);
+    restore_snapshot_files(entry);
+    opkg_msg(NOTICE,
+             "Restoring the base image copy of %s instead of installing it "
+             "from the feed.\n", ghost->name);
+    collected = 1;
+
+out:
+    free(name);
+    free(version);
+    return collected;
+}
+
 static int opkg_install_cmd(int argc, char **argv)
 {
-    int i;
-    char *arg;
+    struct restore_entry *ghosts;
+    char **normal_argv;
+    int i, ghost_count = 0, normal_count = 0;
     int err = 0;
     int r;
+    int unsupported = 0;
+    const size_t meta_count =
+        sizeof(restore_metadata_suffixes) / sizeof(*restore_metadata_suffixes);
 
     signal(SIGINT, sigint_handler);
+
+    ghosts = xcalloc(argc, sizeof(*ghosts));
+    normal_argv = xmalloc(argc * sizeof(*normal_argv));
+
+    /*
+     * Partition the arguments: packages that the base image already provides
+     * and whose removal was journaled are restored (their image copy becomes
+     * visible) instead of being unpacked from the feed into the overlay.
+     */
+    for (i = 0; i < argc; i++) {
+        if (install_collect_ghost(argv[i], &ghosts[ghost_count]))
+            ghost_count++;
+        else
+            normal_argv[normal_count++] = argv[i];
+    }
 
     /*
      * Now scan through package names and install
      */
-    for (i = 0; i < argc; i++) {
-        arg = argv[i];
-
-        opkg_msg(DEBUG2, "%s\n", arg);
-        r = opkg_prepare_url_for_install(arg, &argv[i]);
-        if (r != 0)
-            return -1;
+    for (i = 0; i < normal_count; i++) {
+        opkg_msg(DEBUG2, "%s\n", normal_argv[i]);
+        r = opkg_prepare_url_for_install(normal_argv[i], &normal_argv[i]);
+        if (r != 0) {
+            err = -1;
+            goto cleanup;
+        }
     }
     pkg_info_preinstall_check();
 
-    err = opkg_solver_install(argc, argv);
+    if (normal_count > 0)
+        err = opkg_solver_install(normal_count, normal_argv);
+
+    if (ghost_count > 0 && opkg_config->offline_root)
+        opkg_msg(NOTICE,
+                 "Skipping the base image restore: the overlay ioctls cannot "
+                 "be used on an offline root.\n");
+    else
+        for (i = 0; i < ghost_count; i++) {
+            if (restore_heal_entry(&ghosts[i], (int) meta_count,
+                                   &unsupported) != 0)
+                err = -1;
+        }
+
+    if (restore_report_unsupported(unsupported) != 0)
+        err = -1;
 
     r = opkg_configure_packages(NULL);
     if (r != 0)
         err = -1;
 
     write_status_files_if_changed();
+
+ cleanup:
+    for (i = 0; i < ghost_count; i++) {
+        str_list_deinit(&ghosts[i].paths);
+        free(ghosts[i].name);
+    }
+    free(normal_argv);
+    free(ghosts);
 
     return err;
 }
@@ -805,6 +1169,127 @@ static int opkg_remove_cmd(int argc, char **argv)
     pkg_info_preinstall_check();
 
     err = opkg_solver_remove(argc, argv);
+
+    write_status_files_if_changed();
+    return err;
+}
+
+
+/*
+ * opkg restore: discard the user (overlay) copy of a package and unshadow
+ * the base image copy.
+ *
+ * For each package the recorded file list is snapshotted, the overlay copy
+ * is removed through the ordinary removal path (maintainer scripts,
+ * dependency checks and force options all apply), and the whiteouts that
+ * removal leaves over lower-layer entries are removed again. The overlay's
+ * record of the package (including the journal entry a plain `opkg remove`
+ * of an image package leaves behind) is dropped so the base image status
+ * becomes authoritative again. Packages that are only in the image status
+ * are never removed themselves; for them the whiteout heal is the entire
+ * operation, recovering the damage a plain `opkg remove` of an image
+ * package caused.
+ */
+static int opkg_restore_cmd(int argc, char **argv)
+{
+    struct restore_entry *entries;
+    char **remove_args;
+    pkg_t *pkg;
+    int i, err = 0;
+    int remove_count = 0;
+    int unsupported = 0;
+    const size_t meta_count =
+        sizeof(restore_metadata_suffixes) / sizeof(*restore_metadata_suffixes);
+
+    signal(SIGINT, sigint_handler);
+
+    pkg_info_preinstall_check();
+
+    opkg_msg(NOTICE,
+             "Discarding the overlay copy of %d package(s) and restoring the "
+             "base image copy: ...\n", argc);
+
+    entries = xcalloc(argc, sizeof(*entries));
+    remove_args = xmalloc(argc * sizeof(*remove_args));
+    for (i = 0; i < argc; i++)
+        str_list_init(&entries[i].paths);
+
+    for (i = 0; i < argc; i++) {
+        if (opkg_config->restrict_to_default_dest)
+            pkg = pkg_hash_fetch_installed_by_name_dest(argv[i],
+                                                        opkg_config->default_dest);
+        else
+            pkg = pkg_hash_fetch_installed_by_name(argv[i]);
+        if (pkg == NULL)
+            /* Also accept journal entries: removals of base image packages
+             * are recorded in the writable status file as removed. */
+            pkg = pkg_hash_fetch_by_name(argv[i]);
+        if (pkg == NULL) {
+            opkg_msg(ERROR,
+                     "Package %s is not installed (checked the overlay and "
+                     "the image status);\n"
+                     "nothing to restore.\n", argv[i]);
+            err = -1;
+            goto free_entries;
+        }
+        entries[i].name = xstrdup(pkg->name);
+        entries[i].arg = argv[i];
+        entries[i].info_dir = pkg->dest->info_dir;
+        entries[i].pkg = pkg;
+        entries[i].source = pkg->install_source;
+        entries[i].in_image = (pkg->install_source == PKG_SOURCE_IMAGE
+                               || pkg->install_source == PKG_SOURCE_BOTH);
+        entries[i].had_overlay_copy = (pkg->state_status == SS_INSTALLED
+                                       || pkg->state_status == SS_UNPACKED
+                                       || pkg->state_status == SS_HALF_INSTALLED)
+                && pkg->install_source != PKG_SOURCE_IMAGE;
+        if (!entries[i].had_overlay_copy && !entries[i].in_image) {
+            opkg_msg(ERROR,
+                     "Package %s is not installed and is not shipped by the "
+                     "base image;\n"
+                     "nothing to restore.\n", argv[i]);
+            err = -1;
+            goto free_entries;
+        }
+        /* The snapshot heals the .list whiteout via overlay ioctls; under
+         * an offline root those would hit whatever hosts the foreign root,
+         * and the restore (the only consumer) is skipped below anyway. */
+        if (!opkg_config->offline_root)
+            restore_snapshot_files(&entries[i]);
+    }
+
+    for (i = 0; i < argc; i++) {
+        if (entries[i].had_overlay_copy)
+            remove_args[remove_count++] = entries[i].arg;
+    }
+
+    if (remove_count > 0) {
+        err = opkg_solver_remove(remove_count, remove_args);
+        if (err)
+            goto free_entries;
+    }
+
+    if (opkg_config->offline_root)
+        opkg_msg(NOTICE,
+                 "Skipping the base image restore: the overlay ioctls cannot "
+                 "be used on an offline root.\n");
+    else
+        for (i = 0; i < argc; i++) {
+            if (restore_heal_entry(&entries[i], (int) meta_count,
+                                   &unsupported) != 0)
+                err = -1;
+        }
+
+    if (restore_report_unsupported(unsupported) != 0)
+        err = -1;
+
+ free_entries:
+    for (i = 0; i < argc; i++) {
+        str_list_deinit(&entries[i].paths);
+        free(entries[i].name);
+    }
+    free(remove_args);
+    free(entries);
 
     write_status_files_if_changed();
     return err;
@@ -1280,6 +1765,8 @@ static opkg_cmd_t cmds[] = {
     {"install", 1, (opkg_cmd_fun_t) opkg_install_cmd,
         PFM_DESCRIPTION | PFM_SOURCE, true},
     {"remove", 1, (opkg_cmd_fun_t) opkg_remove_cmd,
+        PFM_DESCRIPTION | PFM_SOURCE, true},
+    {"restore", 1, (opkg_cmd_fun_t) opkg_restore_cmd,
         PFM_DESCRIPTION | PFM_SOURCE, true},
     {"clean", 0, (opkg_cmd_fun_t) opkg_clean_cmd, 0, true},
     {"configure", 0, (opkg_cmd_fun_t) opkg_configure_cmd,

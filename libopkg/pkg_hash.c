@@ -732,6 +732,40 @@ pkg_t *pkg_hash_fetch_installed_by_name(const char *pkg_name)
     return NULL;
 }
 
+/* Like pkg_hash_fetch_installed_by_name(), but also returns packages whose
+ * only record is a removal (a journal entry in the writable status file),
+ * which `opkg restore` must be able to find. */
+pkg_t *pkg_hash_fetch_by_name(const char *pkg_name)
+{
+    pkg_vec_t *vec;
+    unsigned int i;
+    pkg_t *fallback = NULL;
+
+    vec = pkg_vec_fetch_by_name(pkg_name);
+    if (!vec) {
+        return NULL;
+    }
+
+    for (i = 0; i < vec->len; i++) {
+        if (vec->pkgs[i]->state_status == SS_INSTALLED
+                || vec->pkgs[i]->state_status == SS_UNPACKED
+                || vec->pkgs[i]->state_status == SS_HALF_INSTALLED)
+            return vec->pkgs[i];
+        /* Among the non-installed records, prefer the one the image status
+         * file sourced: feeds load before the status files, so a feed-only
+         * (PKG_SOURCE_UNKNOWN) entry can precede the journal-merged image
+         * record. Fall back to the first entry only when no image-sourced
+         * record exists. */
+        if (vec->pkgs[i]->install_source == PKG_SOURCE_IMAGE
+                || vec->pkgs[i]->install_source == PKG_SOURCE_BOTH)
+            fallback = vec->pkgs[i];
+        else if (fallback == NULL)
+            fallback = vec->pkgs[i];
+    }
+
+    return fallback;
+}
+
 static void pkg_hash_fetch_available_helper(const char *pkg_name, void *entry,
                                             void *data)
 {

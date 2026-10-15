@@ -59,6 +59,7 @@ pkg_t *pkg_hash_fetch_best_installation_candidate(abstract_pkg_t * apkg,
                                                   void *cdata, int prefer_installed, int quiet);
 pkg_t *pkg_hash_fetch_best_installation_candidate_by_name(const char *name);
 pkg_t *pkg_hash_fetch_installed_by_name(const char *pkg_name);
+pkg_t *pkg_hash_fetch_by_name(const char *pkg_name);
 pkg_t *pkg_hash_fetch_installed_by_name_dest(const char *pkg_name,
                                              pkg_dest_t * dest);
 

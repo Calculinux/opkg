@@ -23,6 +23,7 @@ set(HEADER_FILES
     opkg_install.h
     opkg_message.h
     opkg_remove.h
+    ovl_restore.h
     opkg_solver.h
     opkg_utils.h
     opkg_verify.h
@@ -101,6 +102,7 @@ set(SOURCE_FILES
     opkg_install.c
     opkg_message.c
     opkg_remove.c
+    ovl_restore.c
     opkg_utils.c
     opkg_verify.c
     parse_util.c
