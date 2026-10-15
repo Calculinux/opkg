@@ -7,6 +7,12 @@ For a historic list of changes from when the project was called "Ipkg", see the 
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-15
+
+Restore hardening: `opkg restore` now surfaces - and, with `--purge`,
+clears - the stale overlay shadows that outliving an image flash leaves
+on the persistent `/data`.
+
 ### Added
 
 - `opkg restore --purge <pkgs>`: upper-layer entries that no status file
