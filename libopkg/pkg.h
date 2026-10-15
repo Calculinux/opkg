@@ -143,6 +143,10 @@ struct pkg {
     pkg_state_want_t image_state_want;
     pkg_state_flag_t image_state_flag;
     pkg_state_status_t image_state_status;
+    /* Process-local: the status writer omits this package entirely. Set by
+     * `opkg restore` to drop the overlay's record of a removed image
+     * package now that the image copy is visible again. */
+    int suppress_status;
     pkg_state_status_t state_status;
     char **depends_str;
     unsigned int depends_count;

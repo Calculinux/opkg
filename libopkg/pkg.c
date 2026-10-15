@@ -124,6 +124,7 @@ static void pkg_init(pkg_t * pkg)
     pkg->installed_size = 0;
     pkg->priority = NULL;
     pkg->install_source = PKG_SOURCE_UNKNOWN;
+    pkg->suppress_status = 0;
     conffile_list_init(&pkg->conffiles);
     pkg->installed_files = NULL;
     pkg->installed_files_ref_cnt = 0;
