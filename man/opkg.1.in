@@ -33,7 +33,7 @@ Configure unpacked \fIpackage(s)\fP
 Remove \fIpackage(s)\fP. \fIglob\fP works like a shell globbing pattern and
 could be something like 'pkgname*' '*file*' or similar
 .TP
-\fBrestore <\fIpackages\fP>\fR
+\fBrestore [\fB--purge\fP] <\fIpackages\fP>\fR
 Discard the overlay (user-installed) copy of \fIpackage(s)\fP and unshadow
 the base image copy. Removes the overlay copy through the ordinary removal
 path, then removes the whiteouts left over the base image's files so the
@@ -42,6 +42,18 @@ image copy becomes visible again. Also repairs packages that a plain
 Calculinux overlayfs ioctls; on systems without them the removal still
 succeeds but opkg reports that the base image files can only be restored
 by a kernel carrying the Calculinux overlayfs module.
+
+.PP
+Upper-layer entries that no opkg status file records - typically a feed
+install that outlived an image flash on the persistent \fI/data\fP - are
+reported for every package named. With \fB--purge\fP they are removed as
+well (directories only when empty and opaque), which is the only way to
+reveal the base image files such entries shadow. Entries are dropped
+through the overlay's own operations, the same path ordinary package
+removals take, and the whiteouts that such a removal of a base image
+entry leaves behind are lifted again within the same call; the flag
+never touches entries that an installed package owns, and combined with
+\fB--noaction\fP it only reports what would be purged.
 
 .PP
 Related: \fBopkg install\fP recognizes packages that the base image

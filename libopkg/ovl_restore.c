@@ -22,6 +22,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <linux/ioctl.h>
@@ -36,6 +37,7 @@
 
 #include "opkg_message.h"
 #include "ovl_restore.h"
+#include "pkg_hash.h"
 
 /*
  * The ioctls and their argument structs are defined by the Calculinux
@@ -176,9 +178,17 @@ static const char *overlay_mount_for(const char *path)
 
     for (i = 0; i < overlay_mount_count; i++) {
         int len = (int) strlen(overlay_mounts[i]);
+        /*
+         * For a mount point of "/" every absolute path lies beneath
+         * it; any other mount point requires a component boundary at
+         * the end of the prefix.
+         */
+        int boundary_ok = (len == 1 && overlay_mounts[i][0] == '/')
+                            || path[len] == '/' || path[len] == '\0';
+
         if (len > best_len
                 && strncmp(path, overlay_mounts[i], len) == 0
-                && (path[len] == '/' || path[len] == '\0')) {
+                && boundary_ok) {
             best = overlay_mounts[i];
             best_len = len;
         }
@@ -325,6 +335,252 @@ int ovl_restore_whiteouts(const char *const *paths, size_t count,
             opkg_msg(INFO, "Restored %s from the base image.\n", clean);
         }
     }
+
+    return result;
+}
+
+/* Append @path (copied) to the growing @array. Returns 0 or -1. */
+static int dropped_push(char ***array, size_t *count, size_t *capacity,
+                        const char *path)
+{
+    char **grown;
+
+    if (*count >= *capacity) {
+        size_t new_capacity = *capacity ? *capacity * 2 : 4;
+
+        grown = realloc(*array, new_capacity * sizeof(**array));
+        if (grown == NULL)
+            return -1;
+        *array = grown;
+        *capacity = new_capacity;
+    }
+    (*array)[*count] = strdup(path);
+    if ((*array)[*count] == NULL)
+        return -1;
+    *count += 1;
+    return 0;
+}
+
+int ovl_purge_stale_upper(const char *const *paths, size_t count,
+                          int do_purge, int dry_run,
+                          const char *exempt_pkg,
+                          int *stale, int *purged, int *unsupported)
+{
+    char scratch[PATH_MAX];
+    char **dropped = NULL;
+    size_t dropped_n = 0, dropped_cap = 0;
+    size_t i;
+    int result = 0;
+
+    if (stale)
+        *stale = 0;
+    if (purged)
+        *purged = 0;
+    if (unsupported)
+        *unsupported = 0;
+
+    for (i = 0; i < count; i++) {
+        const char *clean =
+            strip_trailing_slashes(paths[i], scratch, sizeof(scratch));
+        const char *mount;
+        int fd;
+
+        if (clean == NULL)
+            continue;
+        while (clean[0] == '/' && clean[1] == '/')
+            memmove(clean, clean + 1, strlen(clean));
+
+        mount = overlay_mount_for(clean);
+        if (mount == NULL)
+            continue;
+        fd = overlay_mount_fd(mount);
+        if (fd < 0)
+            return -1;
+
+        {
+            struct ovl_upper_state_args ua;
+
+            memset(&ua, 0, sizeof(ua));
+            ua.path_ptr = (uintptr_t) clean;
+            ua.path_len = (uint32_t) strlen(clean);
+            errno = 0;
+            if (ioctl(fd, OVL_IOC_UPPER_STATE, &ua) < 0) {
+                if (errno == ENOTTY) {
+                    if (unsupported)
+                        *unsupported = 1;
+                    break;
+                }
+                if (errno == ENOENT || errno == ENOTDIR || errno == EXDEV
+                        || errno == EINVAL)
+                    continue;
+                opkg_perror(ERROR,
+                            "Failed to query the upper layer state of %s",
+                            clean);
+                result = -1;
+                break;
+            }
+
+            /* Only opaque upper entries qualify: whiteouts are the
+             * domain of ovl_restore_whiteouts(), and no entry means the
+             * base image copy is already visible. A non-opaque upper
+             * directory merges the lower directory's contents
+             * transparently, so it shadows nothing and is left alone. */
+            if (ua.state != OVL_UPPER_STATE_UPPER)
+                continue;
+            if (S_ISDIR(ua.mode)
+                    && !(ua.state_flags & OVL_UPPER_STATE_F_OPAQUE))
+                continue;
+            {
+                pkg_t *owner = file_hash_get_file_owner(clean);
+
+                /*
+                 * An upper entry that another installed package
+                 * records in its file list is not stale: dropping
+                 * it would break that package. A record of the
+                 * package being restored itself does not veto the
+                 * path: in the common stale case it is precisely the
+                 * base image record of that package which makes the
+                 * hidden copy exist.
+                 */
+                if (owner != NULL
+                        && (exempt_pkg == NULL
+                            || strcmp(owner->name, exempt_pkg) != 0)) {
+                    opkg_msg(DEBUG,
+                             "Upper entry %s is recorded by installed "
+                             "package %s; not treating it as stale\n",
+                             clean, owner->name);
+                    continue;
+                }
+            }
+            if (stale)
+                *stale += 1;
+
+            if (!do_purge) {
+                opkg_msg(NOTICE,
+                         "Stale overlay entry not recorded in the opkg "
+                         "status, shadowing the base image:\n"
+                         "\t%s\n",
+                         clean);
+                continue;
+            }
+            if (dry_run) {
+                /*
+                 * A directory is only removable when empty, so a dry
+                 * run must not promise one that is not. Reading the
+                 * merged directory is a plain lookup; it changes
+                 * nothing. An opaque upper directory's merged view
+                 * contains exactly the upper entry's contents.
+                 */
+                if (S_ISDIR(ua.mode)) {
+                    DIR *dir = opendir(clean);
+                    struct dirent *dent;
+                    int empty = 1;
+
+                    if (dir == NULL) {
+                        opkg_perror(NOTICE,
+                                    "Could not inspect the upper "
+                                    "directory %s; leaving it in "
+                                    "place",
+                                    clean);
+                        continue;
+                    }
+                    while ((dent = readdir(dir)) != NULL) {
+                        if (strcmp(dent->d_name, ".") != 0
+                                && strcmp(dent->d_name, "..") != 0) {
+                            empty = 0;
+                            break;
+                        }
+                    }
+                    closedir(dir);
+                    if (!empty) {
+                        opkg_msg(INFO,
+                                 "Keeping the non-empty upper directory "
+                                 "%s\n",
+                                 clean);
+                        continue;
+                    }
+                }
+                if (purged)
+                    *purged += 1;
+                opkg_msg(INFO, "Would purge the stale overlay entry %s\n",
+                         clean);
+                continue;
+            }
+
+            /*
+             * Drop the entry through the overlay itself: the Calculinux
+             * module owns the upper layer and its path caches, and only
+             * operations it mediates may mutate them. unlink()/rmdir()
+             * on the merged path remove the upper entry (revealing the
+             * base image entry underneath) and the module takes care of
+             * its own caches, exactly like the ordinary removal of a
+             * feed-installed file. Never touch the backing upper
+             * directory directly.
+             */
+            if (unlink(clean) == 0) {
+                if (purged)
+                    *purged += 1;
+                if (dropped_push(&dropped, &dropped_n, &dropped_cap, clean) != 0) {
+                    opkg_msg(ERROR, "Out of memory\n");
+                    result = -1;
+                    break;
+                }
+                opkg_msg(INFO, "Purged the stale overlay entry %s\n",
+                         clean);
+            } else if (errno == EISDIR) {
+                /* Directories come here only when opaque, so a
+                 * successful rmdir really unshadows the base image
+                 * directory; a non-empty one is left alone. */
+                if (rmdir(clean) == 0) {
+                    if (purged)
+                        *purged += 1;
+                    if (dropped_push(&dropped, &dropped_n, &dropped_cap,
+                                     clean) != 0) {
+                        opkg_msg(ERROR, "Out of memory\n");
+                        result = -1;
+                        break;
+                    }
+                    opkg_msg(INFO,
+                             "Purged the stale overlay directory %s\n",
+                             clean);
+                } else if (errno == ENOTEMPTY) {
+                    opkg_msg(INFO,
+                             "Keeping the non-empty upper directory %s\n",
+                             clean);
+                } else {
+                    opkg_perror(NOTICE,
+                                "Failed to purge the upper directory %s; "
+                                "leaving it in place",
+                                clean);
+                }
+            } else if (errno == ENOENT) {
+                continue;    /* raced away */
+            } else {
+                opkg_perror(NOTICE,
+                            "Failed to purge the upper entry %s; leaving "
+                            "it in place",
+                            clean);
+            }
+        }
+    }
+
+    /*
+     * Removing an entry that also exists in the base image is a sticky
+     * removal as far as the module is concerned (that is what makes a
+     * plain 'opkg remove' stick across reboots): the upper entry is gone,
+     * and a whiteout is left over the base image entry to keep it
+     * hidden. Lift those fresh whiteouts now, through the module's own
+     * restore ioctl, so the base image entries end up visible. For
+     * entries the base image does not carry this is a no-op.
+     */
+    if (dropped_n > 0 && result == 0) {
+        if (ovl_restore_whiteouts((const char **)dropped, dropped_n, 0,
+                                  NULL, unsupported) != 0)
+            result = -1;
+    }
+    for (i = 0; i < dropped_n; i++)
+        free(dropped[i]);
+    free(dropped);
 
     return result;
 }

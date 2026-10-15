@@ -70,6 +70,7 @@ enum {
     ARGS_OPT_WRITABLE_ONLY,
     ARGS_OPT_IMAGE_ONLY,
     ARGS_OPT_SHOW_SOURCE,
+    ARGS_OPT_PURGE,
 };
 
 static struct option long_options[] = {
@@ -132,6 +133,7 @@ static struct option long_options[] = {
     {"writable-only", 0, 0, ARGS_OPT_WRITABLE_ONLY},
     {"image-only", 0, 0, ARGS_OPT_IMAGE_ONLY},
     {"show-source", 0, 0, ARGS_OPT_SHOW_SOURCE},
+    {"purge", 0, 0, ARGS_OPT_PURGE},
     {"verbosity", 2, 0, 'V'},
     {"version", 0, 0, 'v'},
     {0, 0, 0, 0}
@@ -289,6 +291,9 @@ static int args_parse_stage2(int argc, char *argv[])
         case ARGS_OPT_NODEPS:
             opkg_config->nodeps = 1;
             break;
+        case ARGS_OPT_PURGE:
+            opkg_config->restore_purge = 1;
+            break;
         case ARGS_OPT_ADD_ARCH:
         case ARGS_OPT_ADD_DEST:
             tuple = xstrdup(optarg);
@@ -374,8 +379,11 @@ static void usage()
     printf("\t                                package instead of reinstalling it)\n");
     printf("\tconfigure <pkgs>                Configure unpacked package(s)\n");
     printf("\tremove <pkgs|glob>              Remove package(s)\n");
-    printf("\trestore <pkgs>                  Remove the overlay copy of package(s) and\n");
+    printf("\trestore [--purge] <pkgs>        Remove the overlay copy of package(s) and\n");
     printf("\t                                unshadow the base image copy\n");
+    printf("\t                                (--purge also drops upper-layer\n");
+    printf("\t                                entries opkg has no record of,\n");
+    printf("\t                                which may shadow the base copy)\n");
     printf("\tclean                           Clean internal cache\n");
     printf("\tflag <flag> <pkgs>              Flag package(s)\n");
     printf("\t <flag>=hold|noprune|user|ok|installed|unpacked (one per invocation)\n");
@@ -454,6 +462,8 @@ static void usage()
     printf("\t--force-checksum                Don't fail on checksum mismatches\n");
     printf("\t--noaction                      No action -- test only\n");
     printf("\t--download-only                 No action -- download only\n");
+    printf("\t--purge                         (restore) Remove untracked upper-layer\n");
+    printf("\t                                entries that shadow base image files\n");
     printf("\t--nodeps                        Do not follow dependencies\n");
     printf("\t--[no-]install-recommends       (Do not) install any recommended packages\n");
     printf("\t--force-removal-of-dependent-packages\n");

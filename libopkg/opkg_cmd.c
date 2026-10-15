@@ -419,6 +419,8 @@ struct restore_entry {
     pkg_source_t source;    /* where the package came from at entry time */
     int in_image;           /* the base image ships the package */
     int had_overlay_copy;   /* an overlay copy had to be removed */
+    int masked;             /* stale upper entries shadowing the image */
+    int purged;             /* stale upper entries removed (--purge) */
     str_list_t paths;       /* files recorded in the pre-removal file list */
 };
 
@@ -1189,6 +1191,11 @@ static int opkg_remove_cmd(int argc, char **argv)
  * are never removed themselves; for them the whiteout heal is the entire
  * operation, recovering the damage a plain `opkg remove` of an image
  * package caused.
+ *
+ * Upper entries that no status file records - typically stale feed installs
+ * that outlived an image flash on the persistent /data - are reported for
+ * every package; with --purge they are removed as well, which is the only
+ * way to reveal the base image files they shadow.
  */
 static int opkg_restore_cmd(int argc, char **argv)
 {
@@ -1196,6 +1203,7 @@ static int opkg_restore_cmd(int argc, char **argv)
     char **remove_args;
     pkg_t *pkg;
     int i, err = 0;
+    int purge = opkg_config->restore_purge;
     int remove_count = 0;
     int unsupported = 0;
     const size_t meta_count =
@@ -1207,7 +1215,8 @@ static int opkg_restore_cmd(int argc, char **argv)
 
     opkg_msg(NOTICE,
              "Discarding the overlay copy of %d package(s) and restoring the "
-             "base image copy: ...\n", argc);
+             "base image copy%s: ...\n",
+             argc, purge ? ", purging stale overlay entries" : "");
 
     entries = xcalloc(argc, sizeof(*entries));
     remove_args = xmalloc(argc * sizeof(*remove_args));
@@ -1275,9 +1284,74 @@ static int opkg_restore_cmd(int argc, char **argv)
                  "be used on an offline root.\n");
     else
         for (i = 0; i < argc; i++) {
+            str_list_elt_t *pit;
+            const char **paths_all = NULL;
+            size_t total = 0, idx;
+            int m, r2 = 0;
+
             if (restore_heal_entry(&entries[i], (int) meta_count,
                                    &unsupported) != 0)
                 err = -1;
+
+            /*
+             * The heal lifts whiteouts, but it cannot tell about upper
+             * entries no status file records (stale feed installs that
+             * outlived an image flash). Probe the same file list plus the
+             * package's metadata files for exactly those.
+             */
+            for (pit = str_list_first(&entries[i].paths); pit;
+                    pit = str_list_next(&entries[i].paths, pit))
+                total++;
+            total += meta_count;
+            if (total > 0) {
+                paths_all = xmalloc(total * sizeof(*paths_all));
+                idx = 0;
+                for (pit = str_list_first(&entries[i].paths); pit;
+                        pit = str_list_next(&entries[i].paths, pit))
+                    paths_all[idx++] = (const char *) pit->data;
+                for (m = 0; m < (int) meta_count; m++) {
+                    char *meta_path;
+
+                    sprintf_alloc(&meta_path, "%s/%s%s",
+                                  entries[i].info_dir, entries[i].name,
+                                  restore_metadata_suffixes[m]);
+                    paths_all[idx++] = meta_path;
+                }
+                r2 = ovl_purge_stale_upper(paths_all, total, purge,
+                                           opkg_config->noaction,
+                                           entries[i].name,
+                                           &entries[i].masked,
+                                           &entries[i].purged,
+                                           &unsupported);
+                for (m = 0; m < (int) meta_count; m++)
+                    free(paths_all[total - meta_count + m]);
+                free(paths_all);
+                if (r2 != 0)
+                    err = -1;
+            }
+
+            if (entries[i].masked > 0) {
+                if (purge) {
+                    if (opkg_config->noaction)
+                        opkg_msg(NOTICE,
+                                 "Would purge %d stale overlay entrie(s) "
+                                 "for %s (noaction).\n",
+                                 entries[i].purged, entries[i].name);
+                    else
+                        opkg_msg(NOTICE,
+                                 "Purged %d stale overlay entrie(s) for "
+                                 "%s.\n",
+                                 entries[i].purged, entries[i].name);
+                } else
+                    opkg_msg(NOTICE,
+                             "%d base image file(s) of %s are shadowed by "
+                             "overlay entries opkg has no record of (likely "
+                             "stale from before an image update); run:\n"
+                             "\topkg restore --purge %s\nto drop them and "
+                             "reveal the base image copy.\n",
+                             entries[i].masked, entries[i].name,
+                             entries[i].name);
+            }
         }
 
     if (restore_report_unsupported(unsupported) != 0)
