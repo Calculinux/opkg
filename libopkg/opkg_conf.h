@@ -118,6 +118,7 @@ typedef struct opkg_conf {
     int query_all;
     int verbosity;
     int noaction;
+    int restore_purge;    /* `opkg restore --purge`: drop untracked upper entries */
     int size;
     int download_only;
     int download_first;

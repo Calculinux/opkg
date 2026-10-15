@@ -23,6 +23,11 @@
  * upper-state ioctls of Calculinux's overlayfs module
  * (https://github.com/Calculinux/overlayfs,
  * include/uapi/linux/overlayfs.h) to remove those whiteouts again.
+ *
+ * ovl_purge_stale_upper() deals with the other, rarer way the base image can
+ * stay hidden: an upper-layer entry that no status file knows about (typically
+ * a package that was installed from a feed on an earlier image and whose
+ * record was lost when the image was flashed, while /data persisted).
  */
 
 #ifndef OVL_RESTORE_H
@@ -52,6 +57,40 @@ extern "C" {
  */
 int ovl_restore_whiteouts(const char *const *paths, size_t count,
                           int dry_run, int *restored, int *unsupported);
+
+/*
+ * Find upper-layer entries at @paths that no opkg status file records
+ * (state UPPER instead of a whiteout or no entry), and optionally remove
+ * them so the base image entries underneath become visible again.
+ *
+ * @paths/@count:   as for ovl_restore_whiteouts().
+ * @do_purge:       0 = report stale entries only; 1 = remove them.
+ * @dry_run:        with @do_purge, count the removals without performing
+ *                  them. Ignored when @do_purge is 0.
+ * @exempt_pkg:     the name of the package whose own bookkeeping (for
+ *                  example its base image record) does not disqualify
+ *                  a path; entries recorded by any other installed
+ *                  package are skipped. May be NULL.
+ * @stale:          receives the number of stale entries found; may be NULL.
+ * @purged:         receives the number of entries removed (or to be removed
+ *                  with @dry_run); may be NULL.
+ * @unsupported:    as for ovl_restore_whiteouts(); may be NULL.
+ *
+ * Entries are dropped through the overlay's own VFS operations (the
+ * Calculinux module owns the upper layer and its path caches; the
+ * backing upper directory must never be mutated directly). Removing an
+ * entry the base image also carries is a sticky removal as far as the
+ * module is concerned, so the whiteouts such removals leave behind are
+ * lifted again (OVL_IOC_RESTORE_LOWER) as part of this call. Directory
+ * entries are only removed when empty and opaque.
+ *
+ * Returns 0 on success (including "nothing to do"); entries the module
+ * declines to drop are reported and left in place.
+ */
+int ovl_purge_stale_upper(const char *const *paths, size_t count,
+                          int do_purge, int dry_run,
+                          const char *exempt_pkg,
+                          int *stale, int *purged, int *unsupported);
 
 #ifdef __cplusplus
 }

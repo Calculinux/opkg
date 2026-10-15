@@ -7,6 +7,25 @@ For a historic list of changes from when the project was called "Ipkg", see the 
 
 ## [Unreleased]
 
+### Added
+
+- `opkg restore --purge <pkgs>`: upper-layer entries that no status file
+  records (typically a feed install that outlived an image flash on the
+  persistent `/data`, shadowing the new image's copy of the same files)
+  are now reported by `opkg restore` for every package named, and with
+  `--purge` they are removed (directories only when empty and opaque) so
+  the base image copy becomes visible. Without the flag the behavior is
+  unchanged apart from the report; `--noaction` limits the purge to a dry
+  run. The purge drops entries through the overlay's own VFS operations
+  (`unlink`/`rmdir` on the merged path), because the Calculinux overlay
+  module owns the upper layer and its path caches; the backing upper
+  directory is never touched directly. Removing an entry the base image
+  also carries is a sticky removal as far as the module is concerned
+  (the same mechanism that makes a plain `opkg remove` stick), so the
+  whiteouts such removals leave behind are lifted again within the same
+  call, and the base image copy is visible immediately without a
+  reboot.
+
 
 ## [0.9.1] - 2026-10-15
 
