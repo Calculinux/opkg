@@ -370,8 +370,12 @@ static void usage()
     printf("\tupgrade                         Upgrade installed packages\n");
     printf("\tdist-upgrade                    Upgrade operation that allows package removal (libsolv backend)\n");
     printf("\tinstall <pkgs>                  Install package(s)\n");
+    printf("\t                                (restores a removed base image\n");
+    printf("\t                                package instead of reinstalling it)\n");
     printf("\tconfigure <pkgs>                Configure unpacked package(s)\n");
     printf("\tremove <pkgs|glob>              Remove package(s)\n");
+    printf("\trestore <pkgs>                  Remove the overlay copy of package(s) and\n");
+    printf("\t                                unshadow the base image copy\n");
     printf("\tclean                           Clean internal cache\n");
     printf("\tflag <flag> <pkgs>              Flag package(s)\n");
     printf("\t <flag>=hold|noprune|user|ok|installed|unpacked (one per invocation)\n");
@@ -505,6 +509,7 @@ int main(int argc, char *argv[])
     noreadfeedsfile = !strcmp(cmd_name, "flag")
         || !strcmp(cmd_name, "configure")
         || !strcmp(cmd_name, "remove")
+        || !strcmp(cmd_name, "restore")
         || !strcmp(cmd_name, "files")
         || !strcmp(cmd_name, "search")
         || !strcmp(cmd_name, "list_installed")
