@@ -597,6 +597,11 @@ int opkg_conf_write_status_files(void)
 
     for (i = 0; i < all->len; i++) {
         pkg = all->pkgs[i];
+        /* `opkg restore` dropped this overlay record: the base image copy is
+         * visible again, so the image status file is authoritative. */
+        if (pkg->suppress_status) {
+            continue;
+        }
         /* We don't need most uninstalled packages in the status file */
         int is_not_wanted = (pkg->state_status == SS_NOT_INSTALLED
                 && (pkg->state_want == SW_UNKNOWN
@@ -604,7 +609,14 @@ int opkg_conf_write_status_files(void)
                         && !(pkg->state_flag & SF_HOLD))
                     || pkg->state_want == SW_PURGE));
         if (is_not_wanted) {
-            continue;
+            /* A removed package the base image also ships is kept after
+             * all: the writable status file doubles as a journal of such
+             * removals. Without the entry, the image status file (which
+             * still lists the package as installed) would make it appear
+             * installed again although its files are whiteouted. */
+            if (pkg->install_source != PKG_SOURCE_IMAGE
+                    && pkg->install_source != PKG_SOURCE_BOTH)
+                continue;
         }
         if (pkg->dest == NULL) {
             opkg_msg(ERROR, "Internal error: package %s has a NULL dest\n",
